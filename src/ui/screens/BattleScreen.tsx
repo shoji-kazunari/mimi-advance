@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BattleTimeline, CombatantProfile, simulateBattle, staminaAtTime } from '../../domain/battle';
+import { CombatantProfile } from '../../domain/battle';
 import { BlackFade } from '../components/BlackFade';
 import { GaugeBar } from '../components/GaugeBar';
+import { useBattlePlayback } from '../hooks/useBattlePlayback';
 import { colors } from '../theme';
 
 interface Props {
-  /** 'boss'は勝利時のみ黒フェードで戻る。'vsRace'は開始演出+終了時に必ず黒フェードで戻る(仕様書5-6章)。 */
-  mode: 'boss' | 'vsRace';
   title: string;
   opponentName: string;
   me: CombatantProfile;
@@ -15,23 +14,25 @@ interface Props {
   onFinished: (won: boolean) => void;
 }
 
-const PLAYBACK_TICK_MS = 50;
 const INTRO_MS = 2000;
 const RESULT_HOLD_MS = 2000;
 
 type Phase = 'intro' | 'battle' | 'result' | 'outro';
 
-export function BattleScreen({ mode, title, opponentName, me, opponent, onFinished }: Props) {
-  const timeline: BattleTimeline = useMemo(() => simulateBattle(me, opponent), [me, opponent]);
-  const [phase, setPhase] = useState<Phase>(mode === 'vsRace' ? 'intro' : 'battle');
-  const [elapsed, setElapsed] = useState(0);
+/**
+ * VSレース専用の全画面バトル演出。仕様書6章: 黒フェード→「VSレース スタート」2秒→
+ * バトル→「WIN」/「LOSE」2秒→黒フェード→通常表示。
+ * ボス戦はメイン画面のボスパネル内で完結するため、このコンポーネントは使わない
+ * (MainScreen内のBossPanelBattleを参照)。
+ */
+export function BattleScreen({ title, opponentName, me, opponent, onFinished }: Props) {
+  const [phase, setPhase] = useState<Phase>('intro');
+  const { timeline, frame, finished, skip, sprinting, won } = useBattlePlayback(me, opponent);
   const resultTimerStarted = useRef(false);
 
-  // onFinishedは親(Root)の再レンダーのたびに新しい関数参照になり得る(JSX内でインライン定義
-  // されているため)。それをそのままuseEffectの依存配列に入れると、無関係な再レンダー
-  // (例: バックグラウンドで進むザコ追い抜き)のたびにこの後のresultタイマーのeffectが
-  // クリーンアップ→再実行され、resultTimerStartedのガードのせいでタイマーが二度と
-  // 再登録されずに演出が止まってしまう。それを避けるため常に最新のonFinishedをrefで持つ。
+  // onFinishedは親の再レンダーのたびに新しい関数参照になり得るため、常に最新の値をrefで持つ
+  // (依存配列に直接入れると、無関係な再レンダーのたびにresultタイマーのeffectが再実行され、
+  // resultTimerStartedのガードのせいでタイマーが二度と再登録されなくなる)。
   const onFinishedRef = useRef(onFinished);
   useEffect(() => {
     onFinishedRef.current = onFinished;
@@ -44,42 +45,15 @@ export function BattleScreen({ mode, title, opponentName, me, opponent, onFinish
   }, [phase]);
 
   useEffect(() => {
-    if (phase !== 'battle') return;
-    const id = setInterval(() => {
-      setElapsed((prev) => {
-        const next = prev + PLAYBACK_TICK_MS;
-        if (next >= timeline.outcome.endedAtMs) {
-          clearInterval(id);
-          setPhase('result');
-          return timeline.outcome.endedAtMs;
-        }
-        return next;
-      });
-    }, PLAYBACK_TICK_MS);
-    return () => clearInterval(id);
-  }, [phase, timeline]);
-
-  const won = timeline.outcome.winner === 'me';
-  // ボス戦は勝利時だけ黒フェードで戻る。VSレースは勝敗によらず黒フェードで戻る(仕様書5-6章)。
-  const needsOutro = mode === 'vsRace' || won;
+    if (phase === 'battle' && finished) setPhase('result');
+  }, [phase, finished]);
 
   useEffect(() => {
     if (phase !== 'result' || resultTimerStarted.current) return;
     resultTimerStarted.current = true;
-    const timer = setTimeout(() => {
-      if (needsOutro) {
-        setPhase('outro');
-      } else {
-        onFinishedRef.current(won);
-      }
-    }, RESULT_HOLD_MS);
+    const timer = setTimeout(() => setPhase('outro'), RESULT_HOLD_MS);
     return () => clearTimeout(timer);
-  }, [phase, needsOutro, won]);
-
-  const handleSkip = () => {
-    setElapsed(timeline.outcome.endedAtMs);
-    setPhase('result');
-  };
+  }, [phase]);
 
   if (phase === 'intro') {
     return <BlackFade label="VSレース スタート" />;
@@ -88,9 +62,6 @@ export function BattleScreen({ mode, title, opponentName, me, opponent, onFinish
   if (phase === 'outro') {
     return <BlackFade label={won ? 'WIN' : 'LOSE'} onDone={() => onFinishedRef.current(won)} />;
   }
-
-  const frame = staminaAtTime(timeline, elapsed);
-  const sprinting = elapsed < me.sprintDurationMs;
 
   return (
     <View style={styles.screen}>
@@ -113,21 +84,11 @@ export function BattleScreen({ mode, title, opponentName, me, opponent, onFinish
       </View>
 
       {phase === 'battle' ? (
-        <Pressable style={styles.skipButton} onPress={handleSkip}>
+        <Pressable style={styles.skipButton} onPress={skip}>
           <Text style={styles.skipButtonText}>スキップ</Text>
         </Pressable>
       ) : (
-        <Text style={styles.resultBanner}>
-          {mode === 'vsRace'
-            ? won
-              ? 'WIN'
-              : 'LOSE'
-            : won
-              ? '勝利！'
-              : timeline.outcome.reason === 'timeout'
-                ? '判定負け…'
-                : '逃げられた…'}
-        </Text>
+        <Text style={styles.resultBanner}>{won ? 'WIN' : 'LOSE'}</Text>
       )}
     </View>
   );

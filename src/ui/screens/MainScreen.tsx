@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { bossCombatantProfile, selfCombatantProfile } from '../../domain/battle';
 import { effectiveStatValue, isStatUnlocked, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
 import { zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
 import { isVsRaceUnlocked, VS_RACE_UNLOCK_STAGE } from '../../domain/vsRace';
@@ -8,6 +9,8 @@ import { STAT_KEYS } from '../../domain/types';
 import { useGameStore } from '../../state/gameStore';
 import { useActiveCharacter } from '../../state/selectors';
 import { useNotifications } from '../Notifications';
+import { BlackFade } from '../components/BlackFade';
+import { BossPanelBattle } from '../components/BossPanelBattle';
 import { GaugeBar } from '../components/GaugeBar';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
@@ -18,19 +21,45 @@ const NG_WORDS = ['死ね', 'クソ', 'アホ'];
 
 interface Props {
   onOpenCharacters: () => void;
-  onStartBossBattle: () => void;
   onOpenVsRace: () => void;
 }
 
-export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }: Props) {
+export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const state = useGameStore((s) => s.state);
   const registerZakoPass = useGameStore((s) => s.registerZakoPass);
   const upgradeStat = useGameStore((s) => s.upgradeStat);
   const unlockShoe = useGameStore((s) => s.unlockShoe);
   const upgradeShoe = useGameStore((s) => s.upgradeShoe);
   const setUsername = useGameStore((s) => s.setUsername);
+  const resolveBossBattle = useGameStore((s) => s.resolveBossBattle);
   const { showToast, showPopup } = useNotifications();
   const character = useActiveCharacter();
+
+  const [inBossBattle, setInBossBattle] = useState(false);
+  const [winFadeStage, setWinFadeStage] = useState<number | null>(null);
+
+  // 「ボスバトル」ボタンを押した瞬間の値で固定する。inBossBattleの真偽値自体は
+  // ボタンを押した時にしか変わらないため、これをキーにすることで、バトル中に
+  // ザコの自動追い抜きなど他の理由でMainScreenが再レンダーされても、
+  // 毎回新しいプロファイルが作られて再生がリセットされることを防いでいる。
+  const bossBattleProfiles = useMemo(() => {
+    if (!inBossBattle) return null;
+    return {
+      me: selfCombatantProfile(character.stats, character.evolutionStage),
+      boss: bossCombatantProfile(character.stage),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inBossBattle]);
+
+  const handleBossSettled = (won: boolean) => {
+    const clearedStage = character.stage;
+    resolveBossBattle(character.defId, won);
+    if (won) {
+      setWinFadeStage(clearedStage);
+    } else {
+      setInBossBattle(false);
+    }
+  };
 
   const [usernameModal, setUsernameModal] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState(state.username);
@@ -44,7 +73,8 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
 
   const lastZakoToastAt = useRef(0);
   useEffect(() => {
-    if (bossReady) return;
+    // ボス撃破直後の黒フェード演出中も、次のステージのザコをカウントし始めてしまわないよう止める。
+    if (bossReady || winFadeStage !== null) return;
     const intervalMs = zakoSpawnIntervalMs(gutsEff);
     const id = setInterval(() => {
       registerZakoPass();
@@ -58,7 +88,7 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
     }, intervalMs);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gutsEff, bossReady, character.defId, character.stage]);
+  }, [gutsEff, bossReady, winFadeStage, character.defId, character.stage]);
 
   const prevBossReady = useRef(bossReady);
   useEffect(() => {
@@ -91,181 +121,207 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>耳アド</Text>
-        <View style={styles.headerButtons}>
-          <Pressable
-            style={styles.iconButton}
-            onPress={() => {
-              setUsernameDraft(state.username);
-              setUsernameModal(true);
-            }}
-          >
-            <Text>👤 {state.username}</Text>
-          </Pressable>
-          <Pressable style={styles.iconButton} onPress={() => setSaveCodeVisible(true)}>
-            <Text>💾</Text>
-          </Pressable>
-          <Pressable style={styles.iconButton} onPress={() => setHelpVisible(true)}>
-            <Text>❓</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.runnerRow}>
-        <Text style={styles.runnerName}>{character.name}</Text>
-        <Pressable style={styles.linkButton} onPress={onOpenCharacters}>
-          <Text style={styles.linkButtonText}>📖 一覧・進化</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.stageRow}>
-        ステージ {character.stage} / 総追い抜き数 {character.totalZakoDefeated}
-      </Text>
-
-      <View style={styles.track}>
-        <Text style={styles.trackEmoji}>🏃</Text>
-        <Text style={styles.trackHint}>{bossReady ? 'ボスが待ち構えている！' : '自動で走行中…'}</Text>
-      </View>
-
-      <View style={styles.bossPanel}>
-        <View style={styles.bossGaugeArea}>
-          <Text style={styles.bossLabel}>
-            追い抜き {character.zakoDefeated}/{required}
-          </Text>
-          <GaugeBar ratio={character.zakoDefeated / required} color={colors.danger} />
-        </View>
-        <Pressable
-          disabled={!bossReady}
-          onPress={onStartBossBattle}
-          style={[styles.bossButton, { backgroundColor: bossReady ? colors.danger : colors.locked }]}
-        >
-          <Text style={styles.bossButtonText}>ボス{'\n'}バトル</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.trainingCard}>
-        <View style={styles.walletRow}>
-          <View style={styles.walletChip}>
-            <Text style={styles.walletLabel}>ランナーpt</Text>
-            <Text style={styles.walletValue}>{Math.floor(state.runnerPt)}</Text>
-          </View>
-          <View style={styles.walletChip}>
-            <Text style={styles.walletLabel}>Vicマネー</Text>
-            <Text style={styles.walletValue}>{Math.floor(state.vicMoney)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.statGrid}>
-          {STAT_KEYS.map((stat) => {
-            const locked = !isStatUnlocked(stat, character.evolutionStage);
-            const cap = statLevelCap(character.evolutionStage);
-            const level = character.stats[stat];
-            const cost = locked ? null : statUpgradeCost(stat, level);
-            return (
-              <StatCard
-                key={stat}
-                statKey={stat}
-                level={level}
-                cost={cost}
-                locked={locked}
-                lockedHint={stat === 'technique' ? '進化2で解放' : stat === 'damage' ? '進化3で解放' : undefined}
-                atCap={level >= cap}
-                onUpgrade={() => upgradeStat(character.defId, stat)}
-              />
-            );
-          })}
-          <View style={[styles.statCardSlot]}>
-            <ShoeCard
-              shoeUnlocked={character.shoeUnlocked}
-              shoeLevel={character.shoeLevel}
-              vicMoney={state.vicMoney}
-              onUnlock={() => {
-                if (character.shoeUnlocked || state.vicMoney < SHOE_UNLOCK_COST) return;
-                unlockShoe(character.defId);
-                showPopup('シューズ解放', 'シューズが解放されました！');
-              }}
-              onUpgrade={() => upgradeShoe(character.defId)}
-            />
-          </View>
-        </View>
-
-        <View style={styles.levelBox}>
-          <Text style={styles.levelBoxText}>
-            キャラLv. {charLv.toFixed(1)} + 仲間Lv. {compLv.toFixed(1)} = 総合Lv. {totalLv.toFixed(1)}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.vsCard}>
-        <Text style={styles.vsTitle}>VSレース</Text>
-        {vsUnlocked ? (
-          <>
-            <Text style={styles.vsBody}>本日の残り回数: {state.vsRace.remaining}</Text>
+    <View style={styles.root}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.title}>耳アド</Text>
+          <View style={styles.headerButtons}>
             <Pressable
-              disabled={state.vsRace.remaining <= 0}
-              style={[
-                styles.vsButton,
-                { backgroundColor: state.vsRace.remaining > 0 ? colors.primary : colors.locked },
-              ]}
-              onPress={onOpenVsRace}
+              style={styles.iconButton}
+              onPress={() => {
+                setUsernameDraft(state.username);
+                setUsernameModal(true);
+              }}
             >
-              <Text style={styles.vsButtonText}>対戦相手を選ぶ</Text>
+              <Text>👤 {state.username}</Text>
             </Pressable>
-          </>
-        ) : (
-          <Text style={styles.vsBody}>ステージ{VS_RACE_UNLOCK_STAGE}到達で解放されます</Text>
-        )}
-      </View>
-
-      <Modal visible={usernameModal} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>ユーザー名を変更</Text>
-            <TextInput
-              style={styles.input}
-              value={usernameDraft}
-              onChangeText={setUsernameDraft}
-              maxLength={8}
+            <Pressable style={styles.iconButton} onPress={() => setSaveCodeVisible(true)}>
+              <Text>💾</Text>
+            </Pressable>
+            <Pressable style={styles.iconButton} onPress={() => setHelpVisible(true)}>
+              <Text>❓</Text>
+            </Pressable>
+          </View>
+        </View>
+  
+        <View style={styles.runnerRow}>
+          <Text style={styles.runnerName}>{character.name}</Text>
+          <Pressable style={styles.linkButton} onPress={onOpenCharacters}>
+            <Text style={styles.linkButtonText}>📖 一覧・進化</Text>
+          </Pressable>
+        </View>
+  
+        <Text style={styles.stageRow}>
+          ステージ {character.stage} / 総追い抜き数 {character.totalZakoDefeated}
+        </Text>
+  
+        <View style={styles.track}>
+          <Text style={styles.trackEmoji}>🏃</Text>
+          <Text style={styles.trackHint}>
+            {inBossBattle ? 'ボスと交戦中…' : bossReady ? 'ボスが待ち構えている！' : '自動で走行中…'}
+          </Text>
+        </View>
+  
+        <View style={styles.bossPanel}>
+          {inBossBattle && bossBattleProfiles ? (
+            <BossPanelBattle
+              me={bossBattleProfiles.me}
+              boss={bossBattleProfiles.boss}
+              onSettled={handleBossSettled}
             />
-            {usernameError && <Text style={styles.errorText}>{usernameError}</Text>}
-            <View style={styles.modalButtonRow}>
-              <Pressable style={styles.modalCancel} onPress={() => setUsernameModal(false)}>
-                <Text>キャンセル</Text>
+          ) : (
+            <>
+              <View style={styles.bossGaugeArea}>
+                <Text style={styles.bossLabel}>
+                  追い抜き {character.zakoDefeated}/{required}
+                </Text>
+                <GaugeBar ratio={character.zakoDefeated / required} color={colors.danger} />
+              </View>
+              <Pressable
+                disabled={!bossReady}
+                onPress={() => setInBossBattle(true)}
+                style={[styles.bossButton, { backgroundColor: bossReady ? colors.danger : colors.locked }]}
+              >
+                <Text style={styles.bossButtonText}>ボス{'\n'}バトル</Text>
               </Pressable>
-              <Pressable style={styles.modalSave} onPress={handleUsernameSave}>
-                <Text style={{ color: '#fff' }}>保存</Text>
+            </>
+          )}
+        </View>
+  
+        <View style={styles.trainingCard}>
+          <View style={styles.walletRow}>
+            <View style={styles.walletChip}>
+              <Text style={styles.walletLabel}>ランナーpt</Text>
+              <Text style={styles.walletValue}>{Math.floor(state.runnerPt)}</Text>
+            </View>
+            <View style={styles.walletChip}>
+              <Text style={styles.walletLabel}>Vicマネー</Text>
+              <Text style={styles.walletValue}>{Math.floor(state.vicMoney)}</Text>
+            </View>
+          </View>
+  
+          <View style={styles.statGrid}>
+            {STAT_KEYS.map((stat) => {
+              const locked = !isStatUnlocked(stat, character.evolutionStage);
+              const cap = statLevelCap(character.evolutionStage);
+              const level = character.stats[stat];
+              const cost = locked ? null : statUpgradeCost(stat, level);
+              return (
+                <StatCard
+                  key={stat}
+                  statKey={stat}
+                  level={level}
+                  cost={cost}
+                  locked={locked}
+                  lockedHint={stat === 'technique' ? '進化2で解放' : stat === 'damage' ? '進化3で解放' : undefined}
+                  atCap={level >= cap}
+                  onUpgrade={() => upgradeStat(character.defId, stat)}
+                />
+              );
+            })}
+            <View style={[styles.statCardSlot]}>
+              <ShoeCard
+                shoeUnlocked={character.shoeUnlocked}
+                shoeLevel={character.shoeLevel}
+                vicMoney={state.vicMoney}
+                onUnlock={() => {
+                  if (character.shoeUnlocked || state.vicMoney < SHOE_UNLOCK_COST) return;
+                  unlockShoe(character.defId);
+                  showPopup('シューズ解放', 'シューズが解放されました！');
+                }}
+                onUpgrade={() => upgradeShoe(character.defId)}
+              />
+            </View>
+          </View>
+  
+          <View style={styles.levelBox}>
+            <Text style={styles.levelBoxText}>
+              キャラLv. {charLv.toFixed(1)} + 仲間Lv. {compLv.toFixed(1)} = 総合Lv. {totalLv.toFixed(1)}
+            </Text>
+          </View>
+        </View>
+  
+        <View style={styles.vsCard}>
+          <Text style={styles.vsTitle}>VSレース</Text>
+          {vsUnlocked ? (
+            <>
+              <Text style={styles.vsBody}>本日の残り回数: {state.vsRace.remaining}</Text>
+              <Pressable
+                disabled={state.vsRace.remaining <= 0}
+                style={[
+                  styles.vsButton,
+                  { backgroundColor: state.vsRace.remaining > 0 ? colors.primary : colors.locked },
+                ]}
+                onPress={onOpenVsRace}
+              >
+                <Text style={styles.vsButtonText}>対戦相手を選ぶ</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={styles.vsBody}>ステージ{VS_RACE_UNLOCK_STAGE}到達で解放されます</Text>
+          )}
+        </View>
+  
+        <Modal visible={usernameModal} transparent animationType="fade">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>ユーザー名を変更</Text>
+              <TextInput
+                style={styles.input}
+                value={usernameDraft}
+                onChangeText={setUsernameDraft}
+                maxLength={8}
+              />
+              {usernameError && <Text style={styles.errorText}>{usernameError}</Text>}
+              <View style={styles.modalButtonRow}>
+                <Pressable style={styles.modalCancel} onPress={() => setUsernameModal(false)}>
+                  <Text>キャンセル</Text>
+                </Pressable>
+                <Pressable style={styles.modalSave} onPress={handleUsernameSave}>
+                  <Text style={{ color: '#fff' }}>保存</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+  
+        <Modal visible={helpVisible} transparent animationType="fade">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>用語集</Text>
+              <ScrollView style={{ maxHeight: 260 }}>
+                <Text style={styles.helpItem}>ランナーpt: ザコを追い抜くと入る。ステータス育成に使う。</Text>
+                <Text style={styles.helpItem}>Vicマネー: ボス撃破やVSレース勝利で入る。シューズ・新キャラ解放に使う。</Text>
+                <Text style={styles.helpItem}>キャラLv.: 自キャラのステータス合計(シューズ倍率込み)。</Text>
+                <Text style={styles.helpItem}>仲間Lv.: 操作していない仲間キャラのステータスの10%を合算したもの。</Text>
+                <Text style={styles.helpItem}>進化: キャラLv.が条件を満たすと行える。新しいステータスが解放される。</Text>
+              </ScrollView>
+              <Pressable style={styles.modalSave} onPress={() => setHelpVisible(false)}>
+                <Text style={{ color: '#fff' }}>閉じる</Text>
               </Pressable>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+  
+        <SaveCodeModal visible={saveCodeVisible} onClose={() => setSaveCodeVisible(false)} />
+      </ScrollView>
 
-      <Modal visible={helpVisible} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>用語集</Text>
-            <ScrollView style={{ maxHeight: 260 }}>
-              <Text style={styles.helpItem}>ランナーpt: ザコを追い抜くと入る。ステータス育成に使う。</Text>
-              <Text style={styles.helpItem}>Vicマネー: ボス撃破やVSレース勝利で入る。シューズ・新キャラ解放に使う。</Text>
-              <Text style={styles.helpItem}>キャラLv.: 自キャラのステータス合計(シューズ倍率込み)。</Text>
-              <Text style={styles.helpItem}>仲間Lv.: 操作していない仲間キャラのステータスの10%を合算したもの。</Text>
-              <Text style={styles.helpItem}>進化: キャラLv.が条件を満たすと行える。新しいステータスが解放される。</Text>
-            </ScrollView>
-            <Pressable style={styles.modalSave} onPress={() => setHelpVisible(false)}>
-              <Text style={{ color: '#fff' }}>閉じる</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      <SaveCodeModal visible={saveCodeVisible} onClose={() => setSaveCodeVisible(false)} />
-    </ScrollView>
+      {winFadeStage !== null && (
+        <BlackFade
+          label="WIN"
+          onDone={() => {
+            showToast(`ステージ${winFadeStage} クリア！`);
+            setWinFadeStage(null);
+            setInBossBattle(false);
+          }}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, paddingBottom: 48, gap: 14 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
