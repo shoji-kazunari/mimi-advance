@@ -108,6 +108,7 @@ function Root() {
       {overlay?.name === 'bossBattle' && bossBattleProfiles && (
         <View style={StyleSheet.absoluteFill}>
           <BattleScreen
+            mode="boss"
             title={`ステージ ${character.stage} ボス戦`}
             opponentName="ボス"
             me={bossBattleProfiles.me}
@@ -124,13 +125,13 @@ function Root() {
       {overlay?.name === 'vsBattle' && vsBattleProfiles && (
         <View style={StyleSheet.absoluteFill}>
           <BattleScreen
+            mode="vsRace"
             title="VSレース"
             opponentName={`対戦相手 (総合Lv. ${overlay.opponent.totalLv.toFixed(1)})`}
             me={vsBattleProfiles.me}
             opponent={vsBattleProfiles.opponentProfile}
             onFinished={(won) => {
               resolveVsRace(vsRaceVicReward(overlay.opponent.totalLv), won);
-              showToast(won ? 'WIN' : 'LOSE');
               setOverlay(null);
             }}
           />

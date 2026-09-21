@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { effectiveStatValue, isStatUnlocked, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
 import { zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
 import { isVsRaceUnlocked, VS_RACE_UNLOCK_STAGE } from '../../domain/vsRace';
+import { SHOE_UNLOCK_COST } from '../../domain/shoes';
 import { STAT_KEYS } from '../../domain/types';
 import { useGameStore } from '../../state/gameStore';
 import { useActiveCharacter } from '../../state/selectors';
@@ -28,7 +29,7 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
   const unlockShoe = useGameStore((s) => s.unlockShoe);
   const upgradeShoe = useGameStore((s) => s.upgradeShoe);
   const setUsername = useGameStore((s) => s.setUsername);
-  const { showToast } = useNotifications();
+  const { showToast, showPopup } = useNotifications();
   const character = useActiveCharacter();
 
   const [usernameModal, setUsernameModal] = useState(false);
@@ -180,7 +181,11 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
               shoeUnlocked={character.shoeUnlocked}
               shoeLevel={character.shoeLevel}
               vicMoney={state.vicMoney}
-              onUnlock={() => unlockShoe(character.defId)}
+              onUnlock={() => {
+                if (character.shoeUnlocked || state.vicMoney < SHOE_UNLOCK_COST) return;
+                unlockShoe(character.defId);
+                showPopup('シューズ解放', 'シューズが解放されました！');
+              }}
               onUpgrade={() => upgradeShoe(character.defId)}
             />
           </View>
