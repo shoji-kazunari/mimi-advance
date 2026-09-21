@@ -13,6 +13,8 @@ interface Props {
   onBack: () => void;
 }
 
+const COSTUME_STAGE_LABELS = ['どうぶつ', 'けもの脚', 'ヒト型'];
+
 export function CharacterDetailScreen({ defId, onBack }: Props) {
   const state = useGameStore((s) => s.state);
   const setActiveCharacter = useGameStore((s) => s.setActiveCharacter);
@@ -36,11 +38,6 @@ export function CharacterDetailScreen({ defId, onBack }: Props) {
     setPreviewVisible(false);
   };
 
-  const cycleCostume = () => {
-    const next = ((character.costumeStage + 1) % (character.evolutionStage + 1)) as EvolutionStage;
-    setCostume(defId, next);
-  };
-
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
@@ -53,10 +50,29 @@ export function CharacterDetailScreen({ defId, onBack }: Props) {
 
       <View style={styles.avatarBlock}>
         <Text style={styles.avatar}>🐾</Text>
-        <Text style={styles.sub}>着せ替え段階: {character.costumeStage}</Text>
-        <Pressable style={styles.smallButton} onPress={cycleCostume}>
-          <Text style={styles.smallButtonText}>着せ替えを変える</Text>
-        </Pressable>
+        <Text style={styles.sub}>着せ替え: {COSTUME_STAGE_LABELS[character.costumeStage]}</Text>
+        <View style={styles.costumeRow}>
+          {Array.from({ length: character.evolutionStage + 1 }, (_, stage) => stage as EvolutionStage).map(
+            (stage) => {
+              const active = character.costumeStage === stage;
+              return (
+                <Pressable
+                  key={stage}
+                  style={[styles.costumeChip, active && styles.costumeChipActive]}
+                  onPress={() => setCostume(defId, stage)}
+                >
+                  <Text style={[styles.costumeChipText, active && styles.costumeChipTextActive]}>
+                    {COSTUME_STAGE_LABELS[stage]}
+                  </Text>
+                </Pressable>
+              );
+            }
+          )}
+          {/* 将来の課金限定コスチューム枠(現状はダミー、仕様書4章)。 */}
+          <View style={[styles.costumeChip, styles.costumeChipLocked]}>
+            <Text style={styles.costumeChipLockedText}>🔒 限定</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.infoRow}>
@@ -136,8 +152,20 @@ const styles = StyleSheet.create({
   avatarBlock: { alignItems: 'center', gap: 6, backgroundColor: colors.card, borderRadius: 16, padding: 16 },
   avatar: { fontSize: 56 },
   sub: { fontSize: 12, color: colors.subtext },
-  smallButton: { backgroundColor: '#f1efe8', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
-  smallButtonText: { fontSize: 12, color: colors.text },
+  costumeRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  costumeChip: {
+    backgroundColor: '#f1efe8',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  costumeChipActive: { backgroundColor: colors.primary },
+  costumeChipText: { fontSize: 12, color: colors.text },
+  costumeChipTextActive: { color: '#fff', fontWeight: '700' },
+  costumeChipLocked: { backgroundColor: 'transparent', borderColor: colors.border },
+  costumeChipLockedText: { fontSize: 12, color: colors.locked },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.card, borderRadius: 12, padding: 12 },
   infoText: { fontSize: 12, color: colors.text },
   statList: { backgroundColor: colors.card, borderRadius: 16, padding: 14, gap: 10 },
