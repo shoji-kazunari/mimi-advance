@@ -172,3 +172,25 @@ describe('unlockCharacter', () => {
     expect(useGameStore.getState().state.vicMoney).toBe(0);
   });
 });
+
+describe('loadState', () => {
+  it('渡したGameStateで丸ごと置き換わる', () => {
+    const incoming = {
+      ...newGameState(),
+      username: 'よそから',
+      runnerPt: 999,
+    };
+    useGameStore.getState().loadState(incoming);
+    expect(useGameStore.getState().state.username).toBe('よそから');
+    expect(useGameStore.getState().state.runnerPt).toBe(999);
+  });
+
+  it('日付が変わっていればVSレース回数をリセットする', () => {
+    const incoming = {
+      ...newGameState(),
+      vsRace: { remaining: 0, lastResetDate: '2000-01-01' },
+    };
+    useGameStore.getState().loadState(incoming);
+    expect(useGameStore.getState().state.vsRace.remaining).toBeGreaterThan(0);
+  });
+});

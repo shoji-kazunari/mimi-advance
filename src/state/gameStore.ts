@@ -56,6 +56,7 @@ interface GameStore {
   unlockCharacter: (charDefId: string) => void;
   resolveBossBattle: (defId: string, won: boolean) => void;
   resolveVsRace: (vicGained: number, won: boolean) => void;
+  loadState: (state: GameState) => void;
 }
 
 function activeCharacter(state: GameState): OwnedCharacter {
@@ -267,5 +268,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ],
       };
     });
+  },
+
+  loadState: (loaded) => {
+    get().setState(() => ({ ...loaded, vsRace: resetVsRaceIfNewDay(loaded.vsRace) }));
   },
 }));

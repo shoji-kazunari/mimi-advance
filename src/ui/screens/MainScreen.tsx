@@ -10,6 +10,7 @@ import { useNotifications } from '../Notifications';
 import { GaugeBar } from '../components/GaugeBar';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
+import { SaveCodeModal } from './SaveCodeModal';
 import { colors } from '../theme';
 
 const NG_WORDS = ['死ね', 'クソ', 'アホ'];
@@ -34,6 +35,7 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
   const [usernameDraft, setUsernameDraft] = useState(state.username);
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [helpVisible, setHelpVisible] = useState(false);
+  const [saveCodeVisible, setSaveCodeVisible] = useState(false);
 
   const required = zakoRequiredCount(character.stage);
   const bossReady = character.zakoDefeated >= required;
@@ -100,6 +102,9 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
             }}
           >
             <Text>👤 {state.username}</Text>
+          </Pressable>
+          <Pressable style={styles.iconButton} onPress={() => setSaveCodeVisible(true)}>
+            <Text>💾</Text>
           </Pressable>
           <Pressable style={styles.iconButton} onPress={() => setHelpVisible(true)}>
             <Text>❓</Text>
@@ -249,6 +254,8 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
           </View>
         </View>
       </Modal>
+
+      <SaveCodeModal visible={saveCodeVisible} onClose={() => setSaveCodeVisible(false)} />
     </ScrollView>
   );
 }

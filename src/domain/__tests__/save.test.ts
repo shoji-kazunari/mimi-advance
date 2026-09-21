@@ -1,4 +1,5 @@
-import { encodeSaveCode, decodeSaveCode } from '../save';
+import { encode } from 'base-64';
+import { encodeSaveCode, decodeSaveCode, isValidGameState } from '../save';
 import { baseStats, GameState } from '../types';
 
 describe('セーブコード', () => {
@@ -28,5 +29,18 @@ describe('セーブコード', () => {
     const code = encodeSaveCode(state);
     const decoded = decodeSaveCode(code);
     expect(decoded).toEqual(state);
+  });
+
+  it('壊れた・別物のコードは例外を投げて弾く(クラッシュではなくエラー表示に倒す)', () => {
+    expect(() => decodeSaveCode('これはセーブコードではない')).toThrow();
+    expect(() => decodeSaveCode(encode(JSON.stringify({ hello: 'world' })))).toThrow();
+  });
+
+  it('isValidGameState: 必須フィールドが欠けたものはfalse', () => {
+    expect(isValidGameState({})).toBe(false);
+    expect(isValidGameState(null)).toBe(false);
+    expect(isValidGameState({ runnerPt: 0, vicMoney: 0, activeCharacterId: 'c1', characters: [] })).toBe(
+      false
+    );
   });
 });
