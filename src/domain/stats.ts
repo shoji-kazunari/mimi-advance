@@ -70,3 +70,14 @@ export function totalLevel(allCharacters: OwnedCharacter[], activeCharacterId: s
   const charLv = active ? characterLevel(active) : 0;
   return charLv + companionLevel(allCharacters, activeCharacterId);
 }
+
+/**
+ * 所持キャラの中でキャラLv.(シューズ倍率込み)が最も高いキャラ。
+ * 仕様書6章のVSレースで使う: 「操作中のキャラ」ではなく「一番強いキャラ」を自動選出する。
+ */
+export function highestLevelCharacter(characters: OwnedCharacter[]): OwnedCharacter | undefined {
+  return characters.reduce<OwnedCharacter | undefined>((best, c) => {
+    if (!best || characterLevel(c) > characterLevel(best)) return c;
+    return best;
+  }, undefined);
+}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, STAT_COLORS, STAT_LABELS } from '../theme';
 
@@ -35,7 +34,7 @@ export function StatCard({ statKey, level, cost, locked, lockedHint, atCap, onUp
 
 const styles = StyleSheet.create({
   card: {
-    flexBasis: '31%',
+    flexBasis: '30%',
     borderWidth: 2,
     borderRadius: 12,
     padding: 10,

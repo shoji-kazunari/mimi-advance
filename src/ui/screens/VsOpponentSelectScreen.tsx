@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { generateVsOpponents, highestCharacterLevel, VsOpponent } from '../../domain/vsRace';
 import { useGameStore } from '../../state/gameStore';

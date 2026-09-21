@@ -54,8 +54,12 @@ export function selfCombatantProfile(
   };
 }
 
-/** 仕様書5章「スタミナ計算式(相手側=ボス)」。 */
-export function bossCombatantProfile(stage: number, selfSpeedEffective: number): CombatantProfile {
+/**
+ * 仕様書5章「スタミナ計算式(相手側=ボス)」。
+ * 自分の速度によるプレッシャーはここでは含めない。simulateBattle側で
+ * 「相手(自分)のpressureToOpponentPerSecをボスの消費レートに足す」形で処理される。
+ */
+export function bossCombatantProfile(stage: number): CombatantProfile {
   const baseDrain = 5 + (stage - 1) * 0.8;
   return {
     maxStamina: 60 + (stage - 1) * 10,
@@ -67,10 +71,6 @@ export function bossCombatantProfile(stage: number, selfSpeedEffective: number):
     skillBonus: 0,
     pressureToOpponentPerSec: 0,
   };
-  // 備考: selfSpeedEffective によるプレッシャーは simulateBattle 側で
-  // 「相手のpressureToOpponentPerSecを自分の消費レートに足す」形で対称的に処理するため、
-  // ここでは使わない。引数はボス戦の呼び出し側で分かりやすくするために残している。
-  void selfSpeedEffective;
 }
 
 export type BattleWinner = 'me' | 'opponent';

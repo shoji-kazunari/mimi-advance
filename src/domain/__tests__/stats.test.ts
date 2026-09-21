@@ -1,4 +1,4 @@
-import { statUpgradeCost, isStatUnlocked, statLevelCap, shoeMultiplier, characterLevel, companionLevel } from '../stats';
+import { statUpgradeCost, isStatUnlocked, statLevelCap, shoeMultiplier, characterLevel, companionLevel, highestLevelCharacter } from '../stats';
 import { baseStats, OwnedCharacter } from '../types';
 
 describe('statUpgradeCost', () => {
@@ -91,5 +91,17 @@ describe('companionLevel', () => {
     const active = makeCharacter({ defId: 'c1' });
     const companion = makeCharacter({ defId: 'c2', evolutionStage: 2 }); // charLv=5
     expect(companionLevel([active, companion], 'c1')).toBeCloseTo(0.5);
+  });
+});
+
+describe('highestLevelCharacter', () => {
+  it('キャラLv.が最も高いキャラを返す(操作中かどうかは無関係)', () => {
+    const active = makeCharacter({ defId: 'c1', evolutionStage: 0 }); // charLv=3
+    const strongerBench = makeCharacter({ defId: 'c2', evolutionStage: 2 }); // charLv=5
+    expect(highestLevelCharacter([active, strongerBench])?.defId).toBe('c2');
+  });
+
+  it('空配列ならundefined', () => {
+    expect(highestLevelCharacter([])).toBeUndefined();
   });
 });

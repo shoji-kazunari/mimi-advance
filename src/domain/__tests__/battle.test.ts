@@ -22,11 +22,11 @@ describe('selfCombatantProfile', () => {
 
 describe('bossCombatantProfile', () => {
   it('ステージに応じてmaxStamina/drainが上がる', () => {
-    const stage1 = bossCombatantProfile(1, 1);
+    const stage1 = bossCombatantProfile(1);
     expect(stage1.maxStamina).toBe(60);
     expect(stage1.cruiseDrainPerSec).toBe(5);
 
-    const stage11 = bossCombatantProfile(11, 1);
+    const stage11 = bossCombatantProfile(11);
     expect(stage11.maxStamina).toBe(160);
     expect(stage11.cruiseDrainPerSec).toBeCloseTo(5 + 10 * 0.8);
   });
@@ -35,7 +35,7 @@ describe('bossCombatantProfile', () => {
 describe('simulateBattle', () => {
   it('決定論的: 同じ入力からは常に同じ結果', () => {
     const me = selfCombatantProfile(baseStats(), 2);
-    const boss = bossCombatantProfile(1, 1);
+    const boss = bossCombatantProfile(1);
     const r1 = simulateBattle(me, boss);
     const r2 = simulateBattle(me, boss);
     expect(r1.outcome).toEqual(r2.outcome);
@@ -46,7 +46,7 @@ describe('simulateBattle', () => {
       { speed: 1, stamina: 20, guts: 10, technique: 10, damage: 10 },
       2
     );
-    const weakBoss = bossCombatantProfile(1, 1);
+    const weakBoss = bossCombatantProfile(1);
     const result = simulateBattle(strongMe, weakBoss);
     expect(result.outcome.winner).toBe('me');
   });
@@ -60,14 +60,14 @@ describe('simulateBattle', () => {
       { speed: 1, stamina: 1, guts: 10, technique: 1, damage: 1 },
       0
     );
-    const easyBoss = bossCombatantProfile(1, 1);
+    const easyBoss = bossCombatantProfile(1);
     const result = simulateBattle(badBuildMe, easyBoss);
     expect(result.outcome.winner).toBe('opponent');
   });
 
   it('タイムラインはBATTLE_MSを超えない', () => {
     const me = selfCombatantProfile(baseStats(), 2);
-    const boss = bossCombatantProfile(1, 1);
+    const boss = bossCombatantProfile(1);
     const result = simulateBattle(me, boss);
     const lastFrame = result.frames[result.frames.length - 1];
     expect(lastFrame.tMs).toBeLessThanOrEqual(BATTLE_MS);

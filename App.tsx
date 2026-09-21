@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { bossCombatantProfile, selfCombatantProfile } from './src/domain/battle';
+import { highestLevelCharacter } from './src/domain/stats';
 import { VsOpponent, vsRaceVicReward } from './src/domain/vsRace';
 import { useGameStore } from './src/state/gameStore';
 import { useActiveCharacter } from './src/state/selectors';
@@ -26,6 +27,7 @@ function Root() {
   const hydrated = useGameStore((s) => s.hydrated);
   const resolveBossBattle = useGameStore((s) => s.resolveBossBattle);
   const resolveVsRace = useGameStore((s) => s.resolveVsRace);
+  const characters = useGameStore((s) => s.state.characters);
   const character = useActiveCharacter();
   const { showToast } = useNotifications();
   const [screen, setScreen] = useState<Screen>({ name: 'main' });
@@ -33,6 +35,30 @@ function Root() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // バトル用プロファイルは「その画面に入った瞬間」の値で固定する。screen自体の参照は
+  // 画面遷移のたびにしか変わらないため、これをキーにすることで、バトル中に他の理由で
+  // Rootが再レンダーされても再生中のタイムラインが巻き戻らないようにしている。
+  const bossBattleProfiles = useMemo(() => {
+    if (screen.name !== 'bossBattle') return null;
+    return {
+      me: selfCombatantProfile(character.stats, character.evolutionStage),
+      boss: bossCombatantProfile(character.stage),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
+  const vsBattleProfiles = useMemo(() => {
+    if (screen.name !== 'vsBattle') return null;
+    // 仕様書6章: VSレースは「操作中のキャラ」ではなく、所持キャラの中でキャラLv.が
+    // 最も高いキャラの生ステータスを使う。
+    const vsCharacter = highestLevelCharacter(characters) ?? character;
+    return {
+      me: selfCombatantProfile(vsCharacter.stats, vsCharacter.evolutionStage),
+      opponentProfile: selfCombatantProfile(screen.opponent.stats, 2),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   if (!hydrated) {
     return (
@@ -55,9 +81,7 @@ function Root() {
         <CharacterDetailScreen defId={screen.defId} onBack={() => setScreen({ name: 'characters' })} />
       );
     case 'bossBattle': {
-      const me = selfCombatantProfile(character.stats, character.evolutionStage);
-      const speedEff = character.stats.speed;
-      const boss = bossCombatantProfile(character.stage, speedEff);
+      const { me, boss } = bossBattleProfiles!;
       return (
         <BattleScreen
           title={`ステージ ${character.stage} ボス戦`}
@@ -80,8 +104,7 @@ function Root() {
         />
       );
     case 'vsBattle': {
-      const me = selfCombatantProfile(character.stats, character.evolutionStage);
-      const opponentProfile = selfCombatantProfile(screen.opponent.stats, 2);
+      const { me, opponentProfile } = vsBattleProfiles!;
       return (
         <BattleScreen
           title="VSレース"

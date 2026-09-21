@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BattleTimeline, CombatantProfile, simulateBattle, staminaAtTime } from '../../domain/battle';
 import { GaugeBar } from '../components/GaugeBar';

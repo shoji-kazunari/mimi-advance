@@ -75,12 +75,25 @@ function updateCharacter(
   };
 }
 
-async function persist(state: GameState) {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // 保存に失敗しても操作自体は継続する(次の操作で再度保存を試みる)
-  }
+const PERSIST_DEBOUNCE_MS = 800;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * 高ガッツ編成だとザコ通過が500ms間隔まで縮むため、その都度AsyncStorageに書くと
+ * 無駄が大きい。直近の状態だけを少し遅らせてまとめて保存する(末尾デバウンス)。
+ */
+function persist(state: GameState) {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {
+      // 保存に失敗しても操作自体は継続する(次の操作で再度保存を試みる)
+    });
+  }, PERSIST_DEBOUNCE_MS);
+  // Node(Jest)環境ではTimeoutオブジェクトにunrefがあり、保留中のデバウンスだけで
+  // プロセス終了が止まらないようにする。RN/ブラウザのsetTimeoutは数値を返すため存在チェックする。
+  const maybeUnref = persistTimer as unknown as { unref?: () => void };
+  maybeUnref.unref?.();
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -104,7 +117,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setState: (updater) => {
     const next = updater(get().state);
     set({ state: next });
-    void persist(next);
+    persist(next);
   },
 
   setUsername: (name) => {

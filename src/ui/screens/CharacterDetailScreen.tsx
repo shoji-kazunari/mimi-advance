@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { characterDefById } from '../../domain/characters';
 import { canEvolve, nextEvolutionStep } from '../../domain/evolution';

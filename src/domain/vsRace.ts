@@ -13,8 +13,15 @@ export function highestCharacterLevel(characters: OwnedCharacter[]): number {
   return characters.reduce((max, c) => Math.max(max, characterLevel(c)), 0);
 }
 
+/**
+ * 端末のローカル日付(YYYY-MM-DD)。日付が変わったかどうかの判定に使うため、
+ * toISOString()のUTC基準ではなく、ユーザーの体感する「日付」に合わせてローカル時刻から組み立てる。
+ */
 export function todayDateString(date: Date = new Date()): string {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 /** 日付が変わっていたら1日5回にリセットする。 */

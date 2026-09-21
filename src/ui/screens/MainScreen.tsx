@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { effectiveStatValue, isStatUnlocked, shoeMultiplier, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
 import { zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
@@ -39,18 +39,25 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
   const bossReady = character.zakoDefeated >= required;
   const gutsEff = effectiveStatValue(character.stats, 'guts', character.evolutionStage);
 
+  const lastZakoToastAt = useRef(0);
   useEffect(() => {
     if (bossReady) return;
     const intervalMs = zakoSpawnIntervalMs(gutsEff);
     const id = setInterval(() => {
       registerZakoPass();
-      showToast('ザコを追い抜いた！');
+      // ガッツで出現間隔が縮むと通知が積み重なって見づらくなるため、
+      // ptの加算は毎回行いつつ、トースト表示だけは間引く。
+      const now = Date.now();
+      if (now - lastZakoToastAt.current >= 1000) {
+        lastZakoToastAt.current = now;
+        showToast('ザコを追い抜いた！');
+      }
     }, intervalMs);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gutsEff, bossReady, character.defId, character.stage]);
 
-  const prevBossReady = React.useRef(bossReady);
+  const prevBossReady = useRef(bossReady);
   useEffect(() => {
     if (bossReady && !prevBossReady.current) {
       showToast('ボス出現！');
@@ -354,8 +361,8 @@ const styles = StyleSheet.create({
   walletChip: { flex: 1, backgroundColor: '#f1efe8', borderRadius: 12, padding: 10, alignItems: 'center' },
   walletLabel: { fontSize: 12, color: colors.subtext },
   walletValue: { fontSize: 18, fontWeight: '800', color: colors.text },
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: '3%', rowGap: 10 },
-  statCardSlot: { flexBasis: '31%' },
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 10 },
+  statCardSlot: { flexBasis: '30%' },
   levelBox: { backgroundColor: '#f1efe8', borderRadius: 12, padding: 10, alignItems: 'center' },
   levelBoxText: { fontSize: 13, color: colors.text },
   vsCard: { backgroundColor: colors.card, borderRadius: 16, padding: 14, gap: 8 },

@@ -1,4 +1,3 @@
-import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { nextLockedCharacter } from '../../domain/characters';
 import { characterLevel } from '../../domain/stats';
