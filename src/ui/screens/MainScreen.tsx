@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { effectiveStatValue, isStatUnlocked, shoeMultiplier, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
+import { effectiveStatValue, isStatUnlocked, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
 import { zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
-import { shoeCostFor, SHOE_UNLOCK_COST } from '../../domain/shoes';
 import { isVsRaceUnlocked, VS_RACE_UNLOCK_STAGE } from '../../domain/vsRace';
 import { STAT_KEYS } from '../../domain/types';
 import { useGameStore } from '../../state/gameStore';
 import { useActiveCharacter } from '../../state/selectors';
 import { useNotifications } from '../Notifications';
 import { GaugeBar } from '../components/GaugeBar';
+import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
 import { colors } from '../theme';
 
@@ -252,68 +252,6 @@ export function MainScreen({ onOpenCharacters, onStartBossBattle, onOpenVsRace }
     </ScrollView>
   );
 }
-
-function ShoeCard({
-  shoeUnlocked,
-  shoeLevel,
-  vicMoney,
-  onUnlock,
-  onUpgrade,
-}: {
-  shoeUnlocked: boolean;
-  shoeLevel: number;
-  vicMoney: number;
-  onUnlock: () => void;
-  onUpgrade: () => void;
-}) {
-  const multiplier = shoeMultiplier(shoeLevel, shoeUnlocked);
-  if (!shoeUnlocked) {
-    const affordable = vicMoney >= SHOE_UNLOCK_COST;
-    return (
-      <View style={[shoeStyles.card, { borderColor: '#c99a1e' }]}>
-        <Text style={[shoeStyles.name, { color: '#c99a1e' }]}>🔒 シューズ</Text>
-        <Text style={shoeStyles.level}>{SHOE_UNLOCK_COST} Vicで解放</Text>
-        <Pressable
-          disabled={!affordable}
-          onPress={onUnlock}
-          style={[shoeStyles.button, { backgroundColor: affordable ? '#c99a1e' : colors.locked }]}
-        >
-          <Text style={shoeStyles.buttonText}>解放する</Text>
-        </Pressable>
-      </View>
-    );
-  }
-  const cost = shoeCostFor(shoeLevel);
-  const affordable = vicMoney >= cost;
-  return (
-    <View style={[shoeStyles.card, { borderColor: '#c99a1e' }]}>
-      <Text style={[shoeStyles.name, { color: '#c99a1e' }]}>シューズ</Text>
-      <Text style={shoeStyles.level}>Lv. {shoeLevel.toFixed(1)} (×{multiplier.toFixed(2)})</Text>
-      <Pressable
-        disabled={!affordable}
-        onPress={onUpgrade}
-        style={[shoeStyles.button, { backgroundColor: affordable ? '#c99a1e' : colors.locked }]}
-      >
-        <Text style={shoeStyles.buttonText}>+0.1 ({cost} Vic)</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-const shoeStyles = StyleSheet.create({
-  card: {
-    borderWidth: 2,
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.card,
-  },
-  name: { fontWeight: '700', fontSize: 13 },
-  level: { fontSize: 13, color: colors.text },
-  button: { borderRadius: 10, paddingVertical: 8, paddingHorizontal: 6, width: '100%' },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
-});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },

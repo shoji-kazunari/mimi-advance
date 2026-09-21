@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from './theme';
 
@@ -44,8 +44,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setPopup({ title, message });
   }, []);
 
+  // トースト自体の表示/消去でNotificationProviderが再レンダーされても、value のオブジェクト
+  // 参照が毎回変わらないようにする。ここを素の{ showToast, showPopup }のままにすると、
+  // トーストが出るたび・消えるたびに useNotifications() を使う全画面(Root, MainScreenなど)
+  // が無関係に再レンダーされてしまう。
+  const value = useMemo<NotificationContextValue>(
+    () => ({ showToast, showPopup }),
+    [showToast, showPopup]
+  );
+
   return (
-    <NotificationContext.Provider value={{ showToast, showPopup }}>
+    <NotificationContext.Provider value={value}>
       {children}
       <View style={styles.toastLayer} pointerEvents="none">
         {toasts.map((t) => (
