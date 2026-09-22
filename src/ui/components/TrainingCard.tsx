@@ -86,10 +86,12 @@ export function TrainingCard({ color, title, subtitle, buttonLabel, disabled, lo
           <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]} numberOfLines={1}>
             {buttonLabel}
           </Text>
-          {pops.map((p) => (
-            <PopText key={p.id} onDone={() => removePop(p.id)} />
-          ))}
         </Animated.View>
+      </View>
+      <View style={styles.popLayer} pointerEvents="none">
+        {pops.map((p) => (
+          <PopText key={p.id} onDone={() => removePop(p.id)} />
+        ))}
       </View>
     </View>
   );
@@ -139,10 +141,16 @@ const styles = StyleSheet.create({
   button: { borderRadius: 10, paddingVertical: 9, paddingHorizontal: 6, width: '100%' },
   buttonText: { color: colors.text, fontWeight: '800', fontSize: 12, textAlign: 'center' },
   buttonTextDisabled: { color: colors.lockedText },
-  pop: {
+  // カード全体の右上に独立したレイヤーとして浮かせる(ボタンの子にすると、真上のLv.表示と
+  // 重なって表示されてしまうため)。
+  popLayer: {
     position: 'absolute',
-    top: -4,
-    right: 4,
+    top: -6,
+    right: 2,
+    zIndex: 10,
+    elevation: 10,
+  },
+  pop: {
     color: colors.gold,
     fontSize: 11,
     fontWeight: '800',

@@ -1,0 +1,53 @@
+import { useEffect, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text } from 'react-native';
+import { colors } from '../../theme';
+
+interface Props {
+  label: string;
+  color?: string;
+  /**
+   * true: 右からスライドインして定位置(トラック幅の78%)に止まる(仕様書6章、ボス出現時)。
+   * false: 最初から定位置に表示済み(バトル開始時、ワイプの裏で既に配置済みの想定)。
+   */
+  slideIn: boolean;
+  /** バトル中の障害物ジャンプ(useObstacleJump)。通常時は指定しない。 */
+  jump?: Animated.AnimatedInterpolation<number>;
+}
+
+const SETTLE_LEFT_PERCENT = 78;
+const SLIDE_IN_MS = 1100;
+
+/** ボス/VS対戦相手の共通表示。「耳アド UI手触り仕様書」6章のボス出現スライドイン。 */
+export function OpponentEntity({ label, color = '#ff9d3d', slideIn, jump }: Props) {
+  const [anim] = useState(() => new Animated.Value(slideIn ? 0 : 1));
+  const [zero] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (!slideIn) return;
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: SLIDE_IN_MS,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false, // leftはネイティブドライバー非対応
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const left = anim.interpolate({ inputRange: [0, 1], outputRange: ['100%', `${SETTLE_LEFT_PERCENT}%`] });
+  const translateY = jump ?? zero;
+
+  return (
+    <Animated.View style={[styles.wrap, { left }]} pointerEvents="none">
+      <Animated.View style={[styles.avatar, { backgroundColor: color, transform: [{ translateY }] }]} />
+      <Text style={styles.label} numberOfLines={1}>
+        {label}
+      </Text>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { position: 'absolute', top: '22%', alignItems: 'center', gap: 6, width: 90, marginLeft: -45 },
+  avatar: { width: 56, height: 56, borderRadius: 16 },
+  label: { color: colors.subtext, fontSize: 11 },
+});

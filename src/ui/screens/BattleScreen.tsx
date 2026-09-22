@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CombatantProfile } from '../../domain/battle';
 import { BlackFade } from '../components/BlackFade';
 import { GaugeBar } from '../components/GaugeBar';
+import { TrackScene } from '../components/track/TrackScene';
 import { useBattlePlayback } from '../hooks/useBattlePlayback';
 import { useShake } from '../hooks/useShake';
 import { useNotifications } from '../Notifications';
@@ -45,7 +46,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
     timerRef.current = setTimeout(() => setter(NORMAL_GAUGE_MS), ATTACK_GAUGE_EASE_MS);
   };
 
-  const { timeline, frame, finished, skip, sprinting, won } = useBattlePlayback(me, opponent, {
+  const { timeline, frame, elapsed, finished, skip, sprinting, won } = useBattlePlayback(me, opponent, {
     onMyAttack: () => {
       showToast('アタック発動！スタミナを削った！');
       triggerShake();
@@ -105,6 +106,15 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
     <Animated.View style={[styles.screen, { transform: [{ translateX }] }]}>
       <Text style={styles.title}>{title}</Text>
 
+      <View style={styles.trackBox}>
+        <TrackScene
+          mode="battle"
+          opponentLabel={opponentName}
+          elapsedMs={elapsed}
+          jumpTimesMs={timeline.obstacleTimesMs}
+        />
+      </View>
+
       <View style={styles.combatantBlock}>
         <Text style={styles.name}>自分{sprinting ? ' ⚡全力疾走' : ''}</Text>
         <GaugeBar
@@ -144,8 +154,9 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 24, justifyContent: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 16, justifyContent: 'center' },
   title: { fontSize: 20, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  trackBox: { height: 150, backgroundColor: colors.card, borderRadius: 20, overflow: 'hidden' },
   combatantBlock: { gap: 8 },
   name: { fontSize: 15, fontWeight: '700', color: colors.text },
   staminaText: { color: colors.subtext, textAlign: 'right' },

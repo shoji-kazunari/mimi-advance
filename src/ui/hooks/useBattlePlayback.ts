@@ -13,12 +13,14 @@ interface AttackHandlers {
   onMyAttack?: () => void;
   /** 相手のアタックが発動した(自分のスタミナを削られた)瞬間に呼ばれる。 */
   onOpponentAttack?: () => void;
+  /** falseの間は再生を開始しない(呼び出し元がまだバトル画面に入っていない場合など)。 */
+  active?: boolean;
 }
 
 export function useBattlePlayback(
   me: CombatantProfile,
   opponent: CombatantProfile,
-  { onMyAttack, onOpponentAttack }: AttackHandlers = {}
+  { onMyAttack, onOpponentAttack, active = true }: AttackHandlers = {}
 ) {
   const timeline: BattleTimeline = useMemo(() => simulateBattle(me, opponent), [me, opponent]);
   const [elapsed, setElapsed] = useState(0);
@@ -49,6 +51,7 @@ export function useBattlePlayback(
   }, [elapsed, timeline, me.attackUnlocked, opponent.attackUnlocked]);
 
   useEffect(() => {
+    if (!active) return;
     startAtRef.current = null;
 
     const tick = (now: number) => {
@@ -68,7 +71,7 @@ export function useBattlePlayback(
     return () => {
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
     };
-  }, [timeline]);
+  }, [timeline, active]);
 
   const skip = () => {
     if (rafIdRef.current !== null) {

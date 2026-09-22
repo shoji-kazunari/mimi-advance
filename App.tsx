@@ -18,8 +18,8 @@ import { colors } from './src/ui/theme';
 // 常にマウントしたままにする。他の画面はすべてその上に重ねるオーバーレイとして扱う。
 // 仕様書10章「ボスパネル(常設・レイアウトシフトしない)…バトル中はこのパネルの中身が
 // スタミナゲージ表示に切り替わる」という記述どおり、ボス戦はMainScreen自身が
-// ボスパネル内で完結させる(BossPanelBattle)。VSレースは独立したイベントとして
-// 全画面の黒フェード演出込みでここ(Root)がオーバーレイ管理する。
+// トラック+ボスパネル内で完結させる(TrackScene battleモード + BossBattleControls)。
+// VSレースは独立したイベントとして全画面の黒ワイプ演出込みでここ(Root)がオーバーレイ管理する。
 type Overlay =
   | { name: 'characters' }
   | { name: 'characterDetail'; defId: string }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { bossCombatantProfile, selfCombatantProfile } from '../../domain/battle';
 import { effectiveStatValue, isStatUnlocked, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
 import { bossRunnerPtReward, bossVicMoneyReward, zakoPtGained, zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
@@ -8,25 +8,36 @@ import { SHOE_UNLOCK_COST } from '../../domain/shoes';
 import { STAT_KEYS } from '../../domain/types';
 import { useGameStore } from '../../state/gameStore';
 import { useActiveCharacter } from '../../state/selectors';
+import { useBattlePlayback } from '../hooks/useBattlePlayback';
+import { useShake } from '../hooks/useShake';
 import { useNotifications } from '../Notifications';
 import { BlackFade } from '../components/BlackFade';
-import { BossPanelBattle } from '../components/BossPanelBattle';
+import { BossBattleControls } from '../components/BossBattleControls';
 import { BossPill } from '../components/BossPill';
 import { FloatingPoint } from '../components/FloatingPoint';
-import { RunnerAvatar } from '../components/RunnerAvatar';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
+import { TrackScene } from '../components/track/TrackScene';
 import { SaveCodeModal } from './SaveCodeModal';
 import { colors } from '../theme';
 
 const NG_WORDS = ['死ね', 'クソ', 'アホ'];
+const ATTACK_GAUGE_EASE_MS = 350;
+const NORMAL_GAUGE_MS = 50;
+const RESULT_HOLD_MS = 1200;
 
-/** すれ違うザコの名前(見た目だけの演出用、ゲーム性には影響しない)。 */
-const ZAKO_NAMES = [
-  'きつね商店', 'たぬ吉', 'うさぎ団長', 'ねこみみ_42', 'モモンガ屋',
-  'はりねずみ野郎', 'くまごろう', 'ひつじ係長', 'ふくろう堂', 'りすの助',
-];
-const ZAKO_COLORS = ['#7c8cff', '#ff8e6e', '#5ce0c6', '#e685e0', '#f2c14e'];
+// バトル中でない間、useBattlePlaybackに渡すダミーのプロファイル(フックは条件分岐で
+// 呼べないため、常に呼びつつ`active: false`で再生を止めておく)。
+const DUMMY_PROFILE = {
+  maxStamina: 1,
+  sprintDurationMs: 0,
+  sprintDrainPerSec: 0,
+  cruiseDrainPerSec: 0,
+  obstacleLoss: 0,
+  attackUnlocked: false,
+  skillBonus: 0,
+  pressureToOpponentPerSec: 0,
+};
 
 interface Props {
   onOpenCharacters: () => void;
@@ -68,21 +79,74 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inBossBattle]);
 
-  const handleBossSettled = (won: boolean) => {
-    const clearedStage = character.stage;
-    resolveBossBattle(character.defId, won);
-    if (won) {
-      showToast([
-        { text: `+${bossRunnerPtReward(clearedStage)}ランナーpt`, color: colors.gold },
-        { text: `+${bossVicMoneyReward(clearedStage)} Vicマネー`, color: colors.mint },
-      ]);
-      setWinFadeStage(clearedStage);
-    } else {
-      showToast('逃げられた...');
-      showToast('トレーニングして再挑戦しよう');
-      setInBossBattle(false);
-    }
+  const { translateX: shakeTranslateX, trigger: triggerShake } = useShake();
+  const [meGaugeMs, setMeGaugeMs] = useState(NORMAL_GAUGE_MS);
+  const [bossGaugeMs, setBossGaugeMs] = useState(NORMAL_GAUGE_MS);
+  const meBoostTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bossBoostTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const boostGauge = (setter: (ms: number) => void, timerRef: { current: ReturnType<typeof setTimeout> | null }) => {
+    setter(ATTACK_GAUGE_EASE_MS);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setter(NORMAL_GAUGE_MS), ATTACK_GAUGE_EASE_MS);
   };
+
+  useEffect(
+    () => () => {
+      if (meBoostTimer.current) clearTimeout(meBoostTimer.current);
+      if (bossBoostTimer.current) clearTimeout(bossBoostTimer.current);
+    },
+    []
+  );
+
+  // フックは条件分岐で呼べないため、バトル中でなくても常に呼ぶ(activeで再生を止める)。
+  const battlePlayback = useBattlePlayback(
+    bossBattleProfiles?.me ?? DUMMY_PROFILE,
+    bossBattleProfiles?.boss ?? DUMMY_PROFILE,
+    {
+      active: inBossBattle,
+      onMyAttack: () => {
+        showToast('アタック発動！スタミナを削った！');
+        triggerShake();
+        boostGauge(setBossGaugeMs, bossBoostTimer);
+      },
+      onOpponentAttack: () => {
+        triggerShake();
+        boostGauge(setMeGaugeMs, meBoostTimer);
+      },
+    }
+  );
+
+  const settledRef = useRef(false);
+  useEffect(() => {
+    if (!inBossBattle) settledRef.current = false;
+  }, [inBossBattle]);
+
+  const handleBossSettledRef = useRef<(won: boolean) => void>(() => {});
+  useEffect(() => {
+    handleBossSettledRef.current = (won: boolean) => {
+      const clearedStage = character.stage;
+      resolveBossBattle(character.defId, won);
+      if (won) {
+        showToast([
+          { text: `+${bossRunnerPtReward(clearedStage)}ランナーpt`, color: colors.gold },
+          { text: `+${bossVicMoneyReward(clearedStage)} Vicマネー`, color: colors.mint },
+        ]);
+        setWinFadeStage(clearedStage);
+      } else {
+        showToast('逃げられた...');
+        showToast('トレーニングして再挑戦しよう');
+        setInBossBattle(false);
+      }
+    };
+  });
+
+  useEffect(() => {
+    if (!inBossBattle || !battlePlayback.finished || settledRef.current) return;
+    settledRef.current = true;
+    const timer = setTimeout(() => handleBossSettledRef.current(battlePlayback.won), RESULT_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [inBossBattle, battlePlayback.finished, battlePlayback.won]);
 
   const [burstTrigger, setBurstTrigger] = useState(0);
   const [usernameModal, setUsernameModal] = useState(false);
@@ -92,10 +156,8 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const [saveCodeVisible, setSaveCodeVisible] = useState(false);
   const [rankingVisible, setRankingVisible] = useState(false);
 
-  const [zako, setZako] = useState<{ name: string; color: string } | null>(null);
   const [popups, setPopups] = useState<{ id: number; text: string }[]>([]);
   const nextPopupId = useRef(0);
-  const zakoHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const required = zakoRequiredCount(character.stage);
   const bossReady = character.zakoDefeated >= required;
@@ -110,30 +172,12 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
     wasBossReadyRef.current = bossReady;
   }, [bossReady, showToast]);
 
-  useEffect(() => {
-    // バトル中(黒フェードも含む)だけ追い抜きを止める。ボスが出現済みでも、
-    // 実際に挑むまでは通常どおりザコを追い抜き続けてptが入る(プロトタイプ準拠)。
-    if (inBossBattle || winFadeStage !== null) return;
-    const intervalMs = zakoSpawnIntervalMs(gutsEff);
-    const id = setInterval(() => {
-      registerZakoPass();
-
-      const gained = zakoPtGained(character.stage, techniqueEff);
-      const popupId = nextPopupId.current++;
-      setPopups((prev) => [...prev, { id: popupId, text: `+${gained}pt` }]);
-
-      const picked = ZAKO_NAMES[Math.floor(Math.random() * ZAKO_NAMES.length)];
-      const color = ZAKO_COLORS[Math.floor(Math.random() * ZAKO_COLORS.length)];
-      setZako({ name: picked, color });
-      if (zakoHideTimer.current) clearTimeout(zakoHideTimer.current);
-      zakoHideTimer.current = setTimeout(() => setZako(null), intervalMs * 0.8);
-    }, intervalMs);
-    return () => {
-      clearInterval(id);
-      if (zakoHideTimer.current) clearTimeout(zakoHideTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gutsEff, techniqueEff, inBossBattle, winFadeStage, character.defId, character.stage]);
+  const handleZakoPass = () => {
+    registerZakoPass();
+    const gained = zakoPtGained(character.stage, techniqueEff);
+    const popupId = nextPopupId.current++;
+    setPopups((prev) => [...prev, { id: popupId, text: `+${gained}pt` }]);
+  };
 
   const charLv = characterLevel(character);
   const compLv = companionLevel(state.characters, state.activeCharacterId);
@@ -196,23 +240,25 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
           ステージ {character.stage} / 総追い抜き {character.totalZakoDefeated}
         </Text>
 
-        <View style={styles.track}>
-          <View style={styles.trackScene}>
-            <RunnerAvatar burstTrigger={burstTrigger} />
-            {inBossBattle ? null : bossReady ? (
-              <View style={styles.actorGroup}>
-                <View style={styles.bossAvatar} />
-                <Text style={styles.actorLabel}>BOSS</Text>
-              </View>
-            ) : zako ? (
-              <View style={styles.actorGroup}>
-                <View style={[styles.zakoAvatar, { backgroundColor: zako.color }]} />
-                <Text style={styles.actorLabel} numberOfLines={1}>
-                  {zako.name}
-                </Text>
-              </View>
-            ) : null}
-          </View>
+        <Animated.View style={[styles.track, inBossBattle && { transform: [{ translateX: shakeTranslateX }] }]}>
+          {inBossBattle && bossBattleProfiles ? (
+            <TrackScene
+              mode="battle"
+              opponentLabel="BOSS"
+              elapsedMs={battlePlayback.elapsed}
+              jumpTimesMs={battlePlayback.timeline.obstacleTimesMs}
+              burstTrigger={burstTrigger}
+            />
+          ) : (
+            <TrackScene
+              mode="idle"
+              spawnIntervalMs={zakoSpawnIntervalMs(gutsEff)}
+              paused={winFadeStage !== null}
+              bossReady={bossReady}
+              onZakoPass={handleZakoPass}
+              burstTrigger={burstTrigger}
+            />
+          )}
           <View style={styles.popupLayer} pointerEvents="none">
             {popups.map((p) => (
               <FloatingPoint
@@ -222,14 +268,21 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               />
             ))}
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={styles.bossPanelWrap}>
+        <Animated.View
+          style={[styles.bossPanelWrap, inBossBattle && { transform: [{ translateX: shakeTranslateX }] }]}
+        >
           {inBossBattle && bossBattleProfiles ? (
-            <BossPanelBattle
-              me={bossBattleProfiles.me}
-              boss={bossBattleProfiles.boss}
-              onSettled={handleBossSettled}
+            <BossBattleControls
+              meRatio={battlePlayback.frame.meStamina / battlePlayback.timeline.meMaxStamina}
+              bossRatio={battlePlayback.frame.opponentStamina / battlePlayback.timeline.opponentMaxStamina}
+              meGaugeMs={meGaugeMs}
+              bossGaugeMs={bossGaugeMs}
+              sprinting={battlePlayback.sprinting}
+              finished={battlePlayback.finished}
+              won={battlePlayback.won}
+              onSkip={battlePlayback.skip}
             />
           ) : (
             <BossPill
@@ -240,7 +293,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               onPress={() => setInBossBattle(true)}
             />
           )}
-        </View>
+        </Animated.View>
 
         <View style={styles.trainingCard}>
           <Text style={styles.trainingTitle}>トレーニング</Text>
@@ -413,7 +466,6 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
         <BlackFade
           label="WIN"
           onDone={() => {
-            showPopup('ステージクリア', `ステージ${winFadeStage} クリア！`);
             setWinFadeStage(null);
             setInBossBattle(false);
           }}
@@ -466,17 +518,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
   },
-  trackScene: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 20,
-  },
-  actorGroup: { alignItems: 'center', gap: 6, maxWidth: 100 },
-  zakoAvatar: { width: 28, height: 40, borderRadius: 14 },
-  bossAvatar: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#ff9d3d' },
-  actorLabel: { color: colors.subtext, fontSize: 11 },
   popupLayer: {
     position: 'absolute',
     top: 0,

@@ -6,6 +6,8 @@ interface Props {
   color?: string;
   /** 値が変わるたびに強化エフェクト(金色の光の輪+スパークル)を1回再生する。 */
   burstTrigger?: number;
+  /** バトル中の障害物ジャンプ(useObstacleJump)。通常時は指定しない。 */
+  jump?: Animated.AnimatedInterpolation<number>;
 }
 
 const BOB_PERIOD_MS = 320;
@@ -15,8 +17,9 @@ const BOB_PERIOD_MS = 320;
  * 通常時は常に小さく上下にバウンド(0.32秒周期)。強化した瞬間はburstTriggerを
  * インクリメントしてもらうことで、金色の光の輪+5個のスパークルを1回だけ再生する。
  */
-export function RunnerAvatar({ color = colors.accent, burstTrigger = 0 }: Props) {
+export function RunnerAvatar({ color = colors.accent, burstTrigger = 0, jump }: Props) {
   const [bob] = useState(() => new Animated.Value(0));
+  const [zero] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -39,7 +42,8 @@ export function RunnerAvatar({ color = colors.accent, burstTrigger = 0 }: Props)
     return () => loop.stop();
   }, [bob]);
 
-  const translateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
+  const bobTranslateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
+  const translateY = Animated.add(bobTranslateY, jump ?? zero);
   const rotate = bob.interpolate({ inputRange: [0, 1], outputRange: ['-2deg', '2deg'] });
 
   return (
