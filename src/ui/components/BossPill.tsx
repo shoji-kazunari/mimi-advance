@@ -11,6 +11,9 @@ interface Props {
 }
 
 const HEIGHT = 52;
+// BossBattleControls(バトル中のゲージパネル)と高さを揃える。バトル開始/終了で
+// 枠の高さがカクッと変わらないようにするため。
+const PANEL_HEIGHT = 72;
 
 /**
  * 追い抜きゲージと「バトル開始」ボタンを左右に並べたバー(プロトタイプ準拠)。
@@ -52,9 +55,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    height: PANEL_HEIGHT,
     backgroundColor: colors.cardInset,
     borderRadius: 26,
-    paddingVertical: 10,
     paddingHorizontal: 16,
     borderWidth: 2,
     borderColor: 'transparent',

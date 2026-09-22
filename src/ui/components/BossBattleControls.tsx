@@ -2,6 +2,11 @@ import { StyleSheet, Pressable, Text, View } from 'react-native';
 import { colors } from '../theme';
 import { GaugeBar } from './GaugeBar';
 
+// BossPill(通常時の追い抜きバー)と高さを揃える。バトル開始/終了で枠の高さが
+// カクッと変わらないようにするため。
+const PANEL_HEIGHT = 72;
+const BUTTON_HEIGHT = 52;
+
 interface Props {
   meRatio: number;
   bossRatio: number;
@@ -63,10 +68,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    height: PANEL_HEIGHT,
     backgroundColor: colors.cardInset,
     borderRadius: 26,
-    paddingVertical: 10,
     paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   gaugeArea: { flex: 0.73, gap: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -74,9 +81,10 @@ const styles = StyleSheet.create({
   gaugeWrapper: { flex: 1 },
   actionButton: {
     flex: 0.27,
+    height: BUTTON_HEIGHT,
     borderRadius: 16,
-    paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.card,
   },
   actionButtonText: { fontSize: 12, fontWeight: '700', color: colors.text },
