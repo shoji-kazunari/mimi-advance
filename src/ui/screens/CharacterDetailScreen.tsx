@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: 12, color: colors.subtext },
   costumeRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   costumeChip: {
-    backgroundColor: '#f1efe8',
+    backgroundColor: colors.cardInset,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   costumeChipText: { fontSize: 12, color: colors.text },
   costumeChipTextActive: { color: '#fff', fontWeight: '700' },
   costumeChipLocked: { backgroundColor: 'transparent', borderColor: colors.border },
-  costumeChipLockedText: { fontSize: 12, color: colors.locked },
+  costumeChipLockedText: { fontSize: 12, color: colors.lockedText },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: colors.card, borderRadius: 12, padding: 12 },
   infoText: { fontSize: 12, color: colors.text },
   statList: { backgroundColor: colors.card, borderRadius: 16, padding: 14, gap: 10 },

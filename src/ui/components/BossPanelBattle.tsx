@@ -64,11 +64,25 @@ export function BossPanelBattle({ me, boss, onSettled }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.cardInset,
+    borderRadius: 26,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
   gaugeArea: { flex: 0.73, gap: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   label: { fontSize: 11, color: colors.subtext, width: 26 },
   gaugeWrapper: { flex: 1 },
-  actionButton: { flex: 0.27, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: colors.card },
+  actionButton: {
+    flex: 0.27,
+    borderRadius: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: colors.card,
+  },
   actionButtonText: { fontSize: 12, fontWeight: '700', color: colors.text },
 });

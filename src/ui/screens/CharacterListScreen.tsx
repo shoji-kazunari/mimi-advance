@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   modalQuestion: { fontSize: 14, color: colors.text },
   walletRow: { flexDirection: 'row', gap: 10 },
-  walletChip: { flex: 1, backgroundColor: '#f1efe8', borderRadius: 12, padding: 10, alignItems: 'center' },
+  walletChip: { flex: 1, backgroundColor: colors.cardInset, borderRadius: 12, padding: 10, alignItems: 'center' },
   walletLabel: { fontSize: 12, color: colors.subtext },
   walletValue: { fontSize: 18, fontWeight: '800', color: colors.text },
   modalNote: { fontSize: 12, color: colors.subtext },

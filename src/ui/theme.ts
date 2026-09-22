@@ -1,11 +1,11 @@
-/** 仕様書10章。ステータスごとのカード色。 */
+/** 仕様書10章。ステータスごとのカード色。プロトタイプの配色に合わせている。 */
 export const STAT_COLORS: Record<string, string> = {
-  speed: '#2f6fed',
-  stamina: '#e58a1f',
-  guts: '#8a4fd6',
-  technique: '#2fa85b',
-  damage: '#d63b3b',
-  shoe: '#c99a1e',
+  speed: '#3b82f6',
+  stamina: '#f0a020',
+  guts: '#9d5ce8',
+  technique: '#2fd193',
+  damage: '#ef4a6e',
+  shoe: '#e0b23a',
 };
 
 export const STAT_LABELS: Record<string, string> = {
@@ -16,13 +16,21 @@ export const STAT_LABELS: Record<string, string> = {
   damage: 'アタック',
 };
 
+/** プロトタイプに合わせたダークテーマ。 */
 export const colors = {
-  background: '#f6f3ee',
-  card: '#ffffff',
-  border: '#e3ddd2',
-  text: '#2a2a2a',
-  subtext: '#767066',
-  primary: '#2f6fed',
-  danger: '#d63b3b',
-  locked: '#c9c4ba',
+  background: '#0a0a12',
+  card: '#201c3d',
+  cardInset: '#181430',
+  border: '#332b5c',
+  text: '#f2f0fb',
+  subtext: '#9d97ba',
+  primary: '#3b82f6',
+  accent: '#ff4d94',
+  danger: '#ef4a6e',
+  locked: '#3a3460',
+  lockedText: '#726c93',
+  gaugeStart: '#2fd193',
+  gaugeEnd: '#ff4d94',
+  gaugeReadyStart: '#ffb020',
+  gaugeReadyEnd: '#ef4a6e',
 };

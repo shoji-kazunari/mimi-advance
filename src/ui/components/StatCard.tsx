@@ -20,7 +20,7 @@ export function StatCard({ statKey, level, cost, locked, lockedHint, atCap, onUp
       color={color}
       title={`${locked ? '🔒 ' : ''}${STAT_LABELS[statKey] ?? statKey}`}
       subtitle={locked ? lockedHint ?? 'ロック中' : `Lv. ${level.toFixed(1)}`}
-      buttonLabel={locked ? 'ロック中' : atCap ? '上限' : `+0.1 (${cost}pt)`}
+      buttonLabel={locked ? 'ロック中' : atCap ? '上限' : `${cost}pt`}
       disabled={disabled}
       onPress={onUpgrade}
     />

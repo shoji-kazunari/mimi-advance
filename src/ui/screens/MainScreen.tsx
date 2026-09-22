@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { bossCombatantProfile, selfCombatantProfile } from '../../domain/battle';
 import { effectiveStatValue, isStatUnlocked, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
-import { zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
+import { zakoPtGained, zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
 import { isVsRaceUnlocked, VS_RACE_UNLOCK_STAGE } from '../../domain/vsRace';
 import { SHOE_UNLOCK_COST } from '../../domain/shoes';
 import { STAT_KEYS } from '../../domain/types';
@@ -11,13 +11,21 @@ import { useActiveCharacter } from '../../state/selectors';
 import { useNotifications } from '../Notifications';
 import { BlackFade } from '../components/BlackFade';
 import { BossPanelBattle } from '../components/BossPanelBattle';
-import { GaugeBar } from '../components/GaugeBar';
+import { BossPill } from '../components/BossPill';
+import { FloatingPoint } from '../components/FloatingPoint';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
 import { SaveCodeModal } from './SaveCodeModal';
 import { colors } from '../theme';
 
 const NG_WORDS = ['死ね', 'クソ', 'アホ'];
+
+/** すれ違うザコの名前(見た目だけの演出用、ゲーム性には影響しない)。 */
+const ZAKO_NAMES = [
+  'きつね商店', 'たぬ吉', 'うさぎ団長', 'ねこみみ_42', 'モモンガ屋',
+  'はりねずみ野郎', 'くまごろう', 'ひつじ係長', 'ふくろう堂', 'りすの助',
+];
+const ZAKO_COLORS = ['#7c8cff', '#ff8e6e', '#5ce0c6', '#e685e0', '#f2c14e'];
 
 interface Props {
   onOpenCharacters: () => void;
@@ -33,7 +41,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const setUsername = useGameStore((s) => s.setUsername);
   const resolveBossBattle = useGameStore((s) => s.resolveBossBattle);
   const refreshVsRaceReset = useGameStore((s) => s.refreshVsRaceReset);
-  const { showToast, showPopup } = useNotifications();
+  const { showPopup } = useNotifications();
   const character = useActiveCharacter();
 
   // アプリを起動したまま日付をまたいだ場合でも、VSレースの残り回数が
@@ -74,38 +82,42 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [helpVisible, setHelpVisible] = useState(false);
   const [saveCodeVisible, setSaveCodeVisible] = useState(false);
+  const [rankingVisible, setRankingVisible] = useState(false);
+
+  const [zako, setZako] = useState<{ name: string; color: string } | null>(null);
+  const [popups, setPopups] = useState<{ id: number; text: string }[]>([]);
+  const nextPopupId = useRef(0);
+  const zakoHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const required = zakoRequiredCount(character.stage);
   const bossReady = character.zakoDefeated >= required;
   const gutsEff = effectiveStatValue(character.stats, 'guts', character.evolutionStage);
+  const techniqueEff = effectiveStatValue(character.stats, 'technique', character.evolutionStage);
 
-  const lastZakoToastAt = useRef(0);
   useEffect(() => {
-    // ボス撃破直後の黒フェード演出中も、次のステージのザコをカウントし始めてしまわないよう止める。
-    if (bossReady || winFadeStage !== null) return;
+    // バトル中(黒フェードも含む)だけ追い抜きを止める。ボスが出現済みでも、
+    // 実際に挑むまでは通常どおりザコを追い抜き続けてptが入る(プロトタイプ準拠)。
+    if (inBossBattle || winFadeStage !== null) return;
     const intervalMs = zakoSpawnIntervalMs(gutsEff);
     const id = setInterval(() => {
       registerZakoPass();
-      // ガッツで出現間隔が縮むと通知が積み重なって見づらくなるため、
-      // ptの加算は毎回行いつつ、トースト表示だけは間引く。
-      const now = Date.now();
-      if (now - lastZakoToastAt.current >= 1000) {
-        lastZakoToastAt.current = now;
-        showToast('ザコを追い抜いた！');
-      }
-    }, intervalMs);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gutsEff, bossReady, winFadeStage, character.defId, character.stage]);
 
-  const prevBossReady = useRef(bossReady);
-  useEffect(() => {
-    if (bossReady && !prevBossReady.current) {
-      showToast('ボス出現！');
-    }
-    prevBossReady.current = bossReady;
+      const gained = zakoPtGained(character.stage, techniqueEff);
+      const popupId = nextPopupId.current++;
+      setPopups((prev) => [...prev, { id: popupId, text: `+${gained}pt` }]);
+
+      const picked = ZAKO_NAMES[Math.floor(Math.random() * ZAKO_NAMES.length)];
+      const color = ZAKO_COLORS[Math.floor(Math.random() * ZAKO_COLORS.length)];
+      setZako({ name: picked, color });
+      if (zakoHideTimer.current) clearTimeout(zakoHideTimer.current);
+      zakoHideTimer.current = setTimeout(() => setZako(null), intervalMs * 0.8);
+    }, intervalMs);
+    return () => {
+      clearInterval(id);
+      if (zakoHideTimer.current) clearTimeout(zakoHideTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bossReady]);
+  }, [gutsEff, techniqueEff, inBossBattle, winFadeStage, character.defId, character.stage]);
 
   const charLv = characterLevel(character);
   const compLv = companionLevel(state.characters, state.activeCharacterId);
@@ -132,45 +144,71 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
     <View style={styles.root}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>耳アド</Text>
+          <View>
+            <Text style={styles.title}>耳アド</Text>
+            <Text style={styles.subtitle}>MIMI ADVANCE</Text>
+          </View>
           <View style={styles.headerButtons}>
             <Pressable
-              style={styles.iconButton}
+              style={styles.pillButton}
               onPress={() => {
                 setUsernameDraft(state.username);
                 setUsernameModal(true);
               }}
             >
-              <Text>👤 {state.username}</Text>
+              <Text style={styles.pillButtonText} numberOfLines={1}>
+                👤 {state.username}
+              </Text>
             </Pressable>
-            <Pressable style={styles.iconButton} onPress={() => setSaveCodeVisible(true)}>
+            <Pressable style={styles.circleButton} onPress={() => setSaveCodeVisible(true)}>
               <Text>💾</Text>
             </Pressable>
-            <Pressable style={styles.iconButton} onPress={() => setHelpVisible(true)}>
+            <Pressable style={styles.circleButton} onPress={() => setHelpVisible(true)}>
               <Text>❓</Text>
             </Pressable>
           </View>
         </View>
-  
+
         <View style={styles.runnerRow}>
           <Text style={styles.runnerName}>{character.name}</Text>
           <Pressable style={styles.linkButton} onPress={onOpenCharacters}>
             <Text style={styles.linkButtonText}>📖 一覧・進化</Text>
           </Pressable>
         </View>
-  
+
         <Text style={styles.stageRow}>
-          ステージ {character.stage} / 総追い抜き数 {character.totalZakoDefeated}
+          ステージ {character.stage} / 総追い抜き {character.totalZakoDefeated}
         </Text>
-  
+
         <View style={styles.track}>
-          <Text style={styles.trackEmoji}>🏃</Text>
-          <Text style={styles.trackHint}>
-            {inBossBattle ? 'ボスと交戦中…' : bossReady ? 'ボスが待ち構えている！' : '自動で走行中…'}
-          </Text>
+          <View style={styles.trackScene}>
+            <View style={styles.runnerAvatar} />
+            {inBossBattle ? null : bossReady ? (
+              <View style={styles.actorGroup}>
+                <View style={styles.bossAvatar} />
+                <Text style={styles.actorLabel}>BOSS</Text>
+              </View>
+            ) : zako ? (
+              <View style={styles.actorGroup}>
+                <View style={[styles.zakoAvatar, { backgroundColor: zako.color }]} />
+                <Text style={styles.actorLabel} numberOfLines={1}>
+                  {zako.name}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.popupLayer} pointerEvents="none">
+            {popups.map((p) => (
+              <FloatingPoint
+                key={p.id}
+                text={p.text}
+                onDone={() => setPopups((prev) => prev.filter((x) => x.id !== p.id))}
+              />
+            ))}
+          </View>
         </View>
-  
-        <View style={styles.bossPanel}>
+
+        <View style={styles.bossPanelWrap}>
           {inBossBattle && bossBattleProfiles ? (
             <BossPanelBattle
               me={bossBattleProfiles.me}
@@ -178,25 +216,18 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               onSettled={handleBossSettled}
             />
           ) : (
-            <>
-              <View style={styles.bossGaugeArea}>
-                <Text style={styles.bossLabel}>
-                  追い抜き {character.zakoDefeated}/{required}
-                </Text>
-                <GaugeBar ratio={character.zakoDefeated / required} color={colors.danger} />
-              </View>
-              <Pressable
-                disabled={!bossReady}
-                onPress={() => setInBossBattle(true)}
-                style={[styles.bossButton, { backgroundColor: bossReady ? colors.danger : colors.locked }]}
-              >
-                <Text style={styles.bossButtonText}>ボス{'\n'}バトル</Text>
-              </Pressable>
-            </>
+            <BossPill
+              ratio={character.zakoDefeated / required}
+              ready={bossReady}
+              current={character.zakoDefeated}
+              required={required}
+              onPress={() => setInBossBattle(true)}
+            />
           )}
         </View>
-  
+
         <View style={styles.trainingCard}>
+          <Text style={styles.trainingTitle}>トレーニング</Text>
           <View style={styles.walletRow}>
             <View style={styles.walletChip}>
               <Text style={styles.walletLabel}>ランナーpt</Text>
@@ -207,7 +238,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               <Text style={styles.walletValue}>{Math.floor(state.vicMoney)}</Text>
             </View>
           </View>
-  
+
           <View style={styles.statGrid}>
             {STAT_KEYS.map((stat) => {
               const locked = !isStatUnlocked(stat, character.evolutionStage);
@@ -241,16 +272,27 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               />
             </View>
           </View>
-  
-          <View style={styles.levelBox}>
-            <Text style={styles.levelBoxText}>
-              キャラLv. {charLv.toFixed(1)} + 仲間Lv. {compLv.toFixed(1)} = 総合Lv. {totalLv.toFixed(1)}
-            </Text>
+
+          <View style={styles.levelRow}>
+            <View style={styles.levelChip}>
+              <Text style={styles.levelChipLabel}>キャラLv.</Text>
+              <Text style={styles.levelChipValue}>{charLv.toFixed(1)}</Text>
+            </View>
+            <Text style={styles.levelOperator}>+</Text>
+            <View style={styles.levelChip}>
+              <Text style={styles.levelChipLabel}>仲間Lv.</Text>
+              <Text style={styles.levelChipValue}>{compLv.toFixed(1)}</Text>
+            </View>
+            <Text style={styles.levelOperator}>=</Text>
+            <View style={[styles.levelChip, styles.levelChipTotal]}>
+              <Text style={styles.levelChipLabel}>総合Lv.</Text>
+              <Text style={styles.levelChipValue}>{totalLv.toFixed(1)}</Text>
+            </View>
           </View>
         </View>
-  
+
         <View style={styles.vsCard}>
-          <Text style={styles.vsTitle}>VSレース</Text>
+          <Text style={styles.vsTitle}>{vsUnlocked ? '' : '✗ '}VSレース</Text>
           {vsUnlocked ? (
             <>
               <Text style={styles.vsBody}>本日の残り回数: {state.vsRace.remaining}</Text>
@@ -266,10 +308,15 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               </Pressable>
             </>
           ) : (
-            <Text style={styles.vsBody}>ステージ{VS_RACE_UNLOCK_STAGE}到達で解放されます</Text>
+            <Text style={styles.vsBody}>
+              ステージ{VS_RACE_UNLOCK_STAGE}で解放されます(現在の最高ステージ: {character.stage})
+            </Text>
           )}
+          <Pressable style={styles.rankingLink} onPress={() => setRankingVisible(true)}>
+            <Text style={styles.rankingLinkText}>🏆 みんなのランキングを見る</Text>
+          </Pressable>
         </View>
-  
+
         <Modal visible={usernameModal} transparent animationType="fade">
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
@@ -279,20 +326,21 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                 value={usernameDraft}
                 onChangeText={setUsernameDraft}
                 maxLength={8}
+                placeholderTextColor={colors.subtext}
               />
               {usernameError && <Text style={styles.errorText}>{usernameError}</Text>}
               <View style={styles.modalButtonRow}>
                 <Pressable style={styles.modalCancel} onPress={() => setUsernameModal(false)}>
-                  <Text>キャンセル</Text>
+                  <Text style={styles.modalCancelText}>キャンセル</Text>
                 </Pressable>
                 <Pressable style={styles.modalSave} onPress={handleUsernameSave}>
-                  <Text style={{ color: '#fff' }}>保存</Text>
+                  <Text style={styles.modalSaveText}>保存</Text>
                 </Pressable>
               </View>
             </View>
           </View>
         </Modal>
-  
+
         <Modal visible={helpVisible} transparent animationType="fade">
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
@@ -305,12 +353,37 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                 <Text style={styles.helpItem}>進化: キャラLv.が条件を満たすと行える。新しいステータスが解放される。</Text>
               </ScrollView>
               <Pressable style={styles.modalSave} onPress={() => setHelpVisible(false)}>
-                <Text style={{ color: '#fff' }}>閉じる</Text>
+                <Text style={styles.modalSaveText}>閉じる</Text>
               </Pressable>
             </View>
           </View>
         </Modal>
-  
+
+        <Modal visible={rankingVisible} transparent animationType="fade">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>🏆 みんなのランキング</Text>
+              <Text style={styles.rankingNote}>
+                (ダミーデータです。実際の非同期対戦データは未実装 — 仕様書11章)
+              </Text>
+              <ScrollView style={{ maxHeight: 260 }}>
+                {DUMMY_RANKING.map((row, i) => (
+                  <View key={row.name} style={styles.rankingRow}>
+                    <Text style={styles.rankingRank}>{i + 1}</Text>
+                    <Text style={styles.rankingName} numberOfLines={1}>
+                      {row.name}
+                    </Text>
+                    <Text style={styles.rankingStage}>ステージ{row.stage}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+              <Pressable style={styles.modalSave} onPress={() => setRankingVisible(false)}>
+                <Text style={styles.modalSaveText}>閉じる</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
         <SaveCodeModal visible={saveCodeVisible} onClose={() => setSaveCodeVisible(false)} />
       </ScrollView>
 
@@ -318,7 +391,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
         <BlackFade
           label="WIN"
           onDone={() => {
-            showToast(`ステージ${winFadeStage} クリア！`);
+            showPopup('ステージクリア', `ステージ${winFadeStage} クリア！`);
             setWinFadeStage(null);
             setInBossBattle(false);
           }}
@@ -328,69 +401,124 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   );
 }
 
+const DUMMY_RANKING = [
+  { name: 'ねこみみ_42', stage: 342 },
+  { name: 'たぬ吉', stage: 288 },
+  { name: 'うさぎ団長', stage: 210 },
+  { name: 'きつね商店', stage: 175 },
+  { name: 'ひつじ係長', stage: 140 },
+];
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, paddingBottom: 48, gap: 14 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 22, fontWeight: '800', color: colors.text },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  title: { fontSize: 24, fontWeight: '800', color: colors.accent },
+  subtitle: { fontSize: 11, color: colors.subtext, letterSpacing: 1, marginTop: 2 },
   headerButtons: { flexDirection: 'row', gap: 8 },
-  iconButton: {
+  pillButton: {
     backgroundColor: colors.card,
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    maxWidth: 140,
+  },
+  pillButtonText: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  circleButton: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   runnerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   runnerName: { fontSize: 18, fontWeight: '700', color: colors.text },
   linkButton: { backgroundColor: colors.card, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 },
-  linkButtonText: { color: colors.primary, fontWeight: '600' },
+  linkButtonText: { color: colors.text, fontWeight: '600', fontSize: 12 },
   stageRow: { color: colors.subtext },
   track: {
-    height: 120,
-    backgroundColor: '#dfeeff',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    height: 150,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  trackEmoji: { fontSize: 36 },
-  trackHint: { color: colors.subtext },
-  bossPanel: {
+  trackScene: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 12,
+    justifyContent: 'space-evenly',
+    paddingHorizontal: 20,
   },
-  bossGaugeArea: { flex: 0.73, gap: 6 },
-  bossLabel: { fontSize: 12, color: colors.subtext },
-  bossButton: { flex: 0.27, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  bossButtonText: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
-  trainingCard: { backgroundColor: colors.card, borderRadius: 16, padding: 14, gap: 12 },
+  runnerAvatar: {
+    width: 40,
+    height: 56,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+  },
+  actorGroup: { alignItems: 'center', gap: 6, maxWidth: 100 },
+  zakoAvatar: { width: 28, height: 40, borderRadius: 14 },
+  bossAvatar: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#ff9d3d' },
+  actorLabel: { color: colors.subtext, fontSize: 11 },
+  popupLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bossPanelWrap: {},
+  trainingCard: { backgroundColor: colors.card, borderRadius: 20, padding: 14, gap: 12 },
+  trainingTitle: { color: colors.text, fontWeight: '700', fontSize: 15 },
   walletRow: { flexDirection: 'row', gap: 10 },
-  walletChip: { flex: 1, backgroundColor: '#f1efe8', borderRadius: 12, padding: 10, alignItems: 'center' },
+  walletChip: { flex: 1, backgroundColor: colors.cardInset, borderRadius: 12, padding: 10, alignItems: 'center' },
   walletLabel: { fontSize: 12, color: colors.subtext },
   walletValue: { fontSize: 18, fontWeight: '800', color: colors.text },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 10 },
   statCardSlot: { flexBasis: '30%' },
-  levelBox: { backgroundColor: '#f1efe8', borderRadius: 12, padding: 10, alignItems: 'center' },
-  levelBoxText: { fontSize: 13, color: colors.text },
-  vsCard: { backgroundColor: colors.card, borderRadius: 16, padding: 14, gap: 8 },
+  levelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  levelChip: {
+    backgroundColor: colors.cardInset,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  levelChipTotal: { borderWidth: 1, borderColor: colors.accent },
+  levelChipLabel: { fontSize: 10, color: colors.subtext },
+  levelChipValue: { fontSize: 14, fontWeight: '800', color: colors.text },
+  levelOperator: { color: colors.subtext, fontWeight: '700' },
+  vsCard: { backgroundColor: colors.card, borderRadius: 20, padding: 14, gap: 8 },
   vsTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   vsBody: { color: colors.subtext },
   vsButton: { borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
   vsButtonText: { color: '#fff', fontWeight: '700' },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  rankingLink: { alignSelf: 'center', marginTop: 4 },
+  rankingLinkText: { color: colors.subtext, fontSize: 12 },
+  rankingNote: { fontSize: 11, color: colors.subtext, marginBottom: 8 },
+  rankingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  rankingRank: { color: colors.accent, fontWeight: '800', width: 20 },
+  rankingName: { flex: 1, color: colors.text },
+  rankingStage: { color: colors.subtext, fontSize: 12 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
   modalCard: { width: '85%', backgroundColor: colors.card, borderRadius: 16, padding: 20, gap: 12 },
   modalTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    padding: 10,
+    color: colors.text,
+    backgroundColor: colors.cardInset,
+  },
   errorText: { color: colors.danger, fontSize: 12 },
   modalButtonRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
   modalCancel: { paddingVertical: 8, paddingHorizontal: 14 },
+  modalCancelText: { color: colors.subtext },
   modalSave: { backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
+  modalSaveText: { color: '#fff', fontWeight: '700' },
   helpItem: { color: colors.text, marginBottom: 8, lineHeight: 20 },
 });

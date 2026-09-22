@@ -105,6 +105,7 @@ export function SaveCodeModal({ visible, onClose }: Props) {
                     setImportError(null);
                   }}
                   placeholder="セーブコードを貼り付け"
+                  placeholderTextColor={colors.subtext}
                   multiline
                 />
                 {importError && <Text style={styles.errorText}>{importError}</Text>}
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700', color: colors.text },
   scroll: { flexGrow: 0 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.subtext },
-  codeBox: { backgroundColor: '#f1efe8', borderRadius: 10, padding: 10, marginTop: 6 },
+  codeBox: { backgroundColor: colors.cardInset, borderRadius: 10, padding: 10, marginTop: 6 },
   codeText: { fontSize: 11, color: colors.text },
   input: {
     borderWidth: 1,
@@ -143,12 +144,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
     minHeight: 80,
     textAlignVertical: 'top',
+    backgroundColor: colors.cardInset,
+    color: colors.text,
   },
   errorText: { color: colors.danger, fontSize: 12, marginTop: 4 },
   warning: { color: colors.text, fontSize: 13, marginTop: 6 },
   confirmRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   secondaryButton: {
-    backgroundColor: '#f1efe8',
+    backgroundColor: colors.cardInset,
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 14,

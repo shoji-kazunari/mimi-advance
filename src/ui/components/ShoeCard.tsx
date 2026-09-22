@@ -36,7 +36,7 @@ export function ShoeCard({ shoeUnlocked, shoeLevel, vicMoney, onUnlock, onUpgrad
       color={color}
       title="シューズ"
       subtitle={`Lv. ${shoeLevel.toFixed(1)} (×${multiplier.toFixed(2)})`}
-      buttonLabel={`+0.1 (${cost} Vic)`}
+      buttonLabel={`${cost} Vic`}
       disabled={!affordable}
       onPress={onUpgrade}
     />
