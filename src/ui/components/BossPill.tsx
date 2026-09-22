@@ -13,8 +13,8 @@ interface Props {
 const HEIGHT = 52;
 
 /**
- * 追い抜きゲージとボスバトルボタンが1本の帯として一体化したピル型UI(プロトタイプ準拠)。
- * ゲージの塗り自体がボタンの背景を兼ねていて、たまるとオレンジ〜赤に変わり枠が光る。
+ * 追い抜きゲージと「バトル開始」ボタンを左右に並べたバー(プロトタイプ準拠)。
+ * ボタンはゲージの右側に独立して置き、ボスが出現する(ready)までは押せない見た目にする。
  */
 export function BossPill({ ratio, ready, current, required, onPress }: Props) {
   const clamped = Math.max(0, Math.min(1, ratio));
@@ -23,33 +23,52 @@ export function BossPill({ ratio, ready, current, required, onPress }: Props) {
     : [colors.gaugeStart, colors.gaugeEnd];
 
   return (
-    <Pressable disabled={!ready} onPress={onPress} style={[styles.pill, ready && styles.pillReady]}>
-      <View style={[styles.fillWrapper, { width: `${clamped * 100}%` }]}>
-        <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fill} />
-      </View>
-      <View style={styles.content}>
+    <View style={[styles.row, ready && styles.rowReady]}>
+      <View style={styles.gaugeArea}>
         <Text style={styles.label} numberOfLines={1}>
           {ready ? 'ボス出現中' : `追い抜き ${current}/${required}`}
         </Text>
-        <Text style={[styles.button, ready && styles.buttonReady]} numberOfLines={1}>
+        <View style={styles.track}>
+          <View style={[styles.fillWrapper, { width: `${clamped * 100}%` }]}>
+            <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fill} />
+          </View>
+        </View>
+      </View>
+      <Pressable
+        disabled={!ready}
+        onPress={onPress}
+        style={[styles.button, ready ? styles.buttonReady : styles.buttonInactive]}
+      >
+        <Text style={[styles.buttonText, ready && styles.buttonTextReady]} numberOfLines={1}>
           バトル開始
         </Text>
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  pill: {
-    height: HEIGHT,
-    borderRadius: HEIGHT / 2,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: colors.cardInset,
-    overflow: 'hidden',
+    borderRadius: 26,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  pillReady: {
+  rowReady: {
     borderColor: colors.gaugeReadyStart,
+  },
+  gaugeArea: { flex: 0.73, gap: 6 },
+  label: { color: colors.text, fontWeight: '700', fontSize: 13 },
+  track: {
+    height: HEIGHT / 3,
+    borderRadius: HEIGHT / 6,
+    backgroundColor: colors.background,
+    overflow: 'hidden',
   },
   fillWrapper: {
     position: 'absolute',
@@ -58,17 +77,16 @@ const styles = StyleSheet.create({
     left: 0,
     overflow: 'hidden',
   },
-  fill: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    flexDirection: 'row',
+  fill: { flex: 1 },
+  button: {
+    flex: 0.27,
+    height: HEIGHT,
+    borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
+    justifyContent: 'center',
   },
-  label: { color: colors.text, fontWeight: '700', fontSize: 13 },
-  button: { color: colors.text, fontWeight: '800', fontSize: 13, opacity: 0.6 },
-  buttonReady: { color: '#1a0f00', opacity: 1 },
+  buttonInactive: { backgroundColor: colors.locked },
+  buttonReady: { backgroundColor: colors.gaugeReadyStart },
+  buttonText: { fontSize: 13, fontWeight: '800', color: colors.lockedText },
+  buttonTextReady: { color: '#1a0f00' },
 });
