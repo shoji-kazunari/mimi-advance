@@ -14,6 +14,12 @@ interface Props {
   exit?: boolean;
   /** バトル中の障害物ジャンプ(useObstacleJump)。通常時は指定しない。 */
   jump?: Animated.AnimatedInterpolation<number>;
+  /**
+   * 定位置(anim=1のとき)の左位置(%)。仕様書5章「ボスの横位置はボス自身の残スタミナ比率で
+   * 自キャラに詰め寄る」を反映するため、バトル中は毎フレーム呼び出し側から渡し直す。
+   * 未指定時はSETTLE_LEFT_PERCENT(スライドイン直後の定位置)。
+   */
+  settleLeftPercent?: number;
 }
 
 const SETTLE_LEFT_PERCENT = 78;
@@ -22,7 +28,14 @@ const SLIDE_IN_MS = 1100;
 const EXIT_MS = 450;
 
 /** ボス/VS対戦相手の共通表示。「耳アド UI手触り仕様書」6章のボス出現スライドイン・敗北退場。 */
-export function OpponentEntity({ label, color = '#ff9d3d', slideIn, exit = false, jump }: Props) {
+export function OpponentEntity({
+  label,
+  color = '#ff9d3d',
+  slideIn,
+  exit = false,
+  jump,
+  settleLeftPercent = SETTLE_LEFT_PERCENT,
+}: Props) {
   // anim: 0=画面右外、1=定位置(78%)、2=退場しきった状態(140%)。
   const [anim] = useState(() => new Animated.Value(slideIn ? 0 : 1));
   const [zero] = useState(() => new Animated.Value(0));
@@ -50,7 +63,7 @@ export function OpponentEntity({ label, color = '#ff9d3d', slideIn, exit = false
 
   const left = anim.interpolate({
     inputRange: [0, 1, 2],
-    outputRange: ['100%', `${SETTLE_LEFT_PERCENT}%`, `${EXIT_LEFT_PERCENT}%`],
+    outputRange: ['100%', `${settleLeftPercent}%`, `${EXIT_LEFT_PERCENT}%`],
   });
   const translateY = jump ?? zero;
 

@@ -113,6 +113,8 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
           opponentLabel={opponentName}
           elapsedMs={elapsed}
           jumpTimesMs={timeline.obstacleTimesMs}
+          meRatio={frame.meStamina / timeline.meMaxStamina}
+          opponentRatio={frame.opponentStamina / timeline.opponentMaxStamina}
         />
         <TrackToastLayer />
       </View>

@@ -36,6 +36,10 @@ interface BattleProps {
   /** timeline.obstacleTimesMs。障害物がボスの位置を通過する時刻として使う
    *  (自キャラは同じ障害物がさらに奥まで進んでから届くよう、下でずらして使う)。 */
   jumpTimesMs: number[];
+  /** frame.meStamina / timeline.meMaxStamina。ボスの詰め寄り具合(仕様書5章)の判定に使う。 */
+  meRatio: number;
+  /** frame.opponentStamina / timeline.opponentMaxStamina。ボスの横位置はこの残量で自キャラに詰め寄る。 */
+  opponentRatio: number;
   burstTrigger?: number;
   /** 勝敗演出: 'me'で自キャラが、'opponent'で相手が右へ加速して退場する(仕様書6章)。 */
   exitSide?: 'me' | 'opponent' | null;
@@ -47,6 +51,8 @@ let zakoIdSeq = 0;
 let obstacleIdSeq = 0;
 const RUNNER_LEFT_PERCENT = 12;
 const OPPONENT_LEFT_PERCENT = 78;
+// ボスがスタミナ0で自キャラに「完全に隣接」したときの位置(仕様書5章)。
+const OPPONENT_ADJACENT_PERCENT = RUNNER_LEFT_PERCENT + 10;
 const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
 
@@ -143,6 +149,17 @@ export function TrackScene(props: Props) {
     outputRange: [`${RUNNER_LEFT_PERCENT}%`, '140%'],
   });
 
+  // 仕様書5章: 「ボスの横位置はボス自身の残スタミナ比率で自キャラに詰め寄る
+  // (スタミナ0で完全に隣接)。自分が劣勢な時だけ遠のく」。
+  // ボス自身の消耗(1-opponentRatio)を詰め寄り量の基本にしつつ、自分がボスより
+  // 相対的に劣勢な分(opponentRatio - meRatio)だけ詰め寄りを弱めて遠のかせる。
+  const opponentRatio = props.mode === 'battle' ? props.opponentRatio : 1;
+  const meRatio = props.mode === 'battle' ? props.meRatio : 1;
+  const disadvantage = Math.max(0, opponentRatio - meRatio);
+  const approachRatio = Math.min(1, Math.max(0, 1 - opponentRatio - disadvantage));
+  const opponentSettleLeft =
+    OPPONENT_LEFT_PERCENT - (OPPONENT_LEFT_PERCENT - OPPONENT_ADJACENT_PERCENT) * approachRatio;
+
   return (
     <View style={styles.scene}>
       <TrackBackground />
@@ -170,6 +187,7 @@ export function TrackScene(props: Props) {
             slideIn={false}
             exit={exitSide === 'opponent'}
             jump={opponentJump}
+            settleLeftPercent={opponentSettleLeft}
           />
           {obstacleList.map((o) => (
             <TrackObstacle

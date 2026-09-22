@@ -280,6 +280,8 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               opponentLabel="BOSS"
               elapsedMs={battlePlayback.elapsed}
               jumpTimesMs={battlePlayback.timeline.obstacleTimesMs}
+              meRatio={battlePlayback.frame.meStamina / battlePlayback.timeline.meMaxStamina}
+              opponentRatio={battlePlayback.frame.opponentStamina / battlePlayback.timeline.opponentMaxStamina}
               burstTrigger={burstTrigger}
               exitSide={postBattle?.kind === 'exiting' ? postBattle.side : null}
             />
