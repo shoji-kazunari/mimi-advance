@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useObstacleJump } from '../../hooks/useObstacleJump';
 import { RunnerAvatar } from '../RunnerAvatar';
-import { ObstacleMarker } from './ObstacleMarker';
 import { OpponentEntity } from './OpponentEntity';
 import { TrackBackground } from './TrackBackground';
+import { OBSTACLE_END_PERCENT, OBSTACLE_START_PERCENT, OBSTACLE_TRAVEL_MS, TrackObstacle } from './TrackObstacle';
 import { Zako } from './Zako';
 
 /** すれ違うザコの名前(見た目だけの演出用、ゲーム性には影響しない)。 */
@@ -33,7 +33,8 @@ interface BattleProps {
   opponentColor?: string;
   /** useBattlePlaybackのelapsed。障害物ジャンプの同期に使う。 */
   elapsedMs: number;
-  /** timeline.obstacleTimesMs。自キャラ・ボス双方が同じ地点で跳ぶ。 */
+  /** timeline.obstacleTimesMs。障害物がボスの位置を通過する時刻として使う
+   *  (自キャラは同じ障害物がさらに奥まで進んでから届くよう、下でずらして使う)。 */
   jumpTimesMs: number[];
   burstTrigger?: number;
   /** 勝敗演出: 'me'で自キャラが、'opponent'で相手が右へ加速して退場する(仕様書6章)。 */
@@ -43,10 +44,20 @@ interface BattleProps {
 type Props = IdleProps | BattleProps;
 
 let zakoIdSeq = 0;
+let obstacleIdSeq = 0;
 const RUNNER_LEFT_PERCENT = 12;
 const OPPONENT_LEFT_PERCENT = 78;
 const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
+
+// 障害物は右(OBSTACLE_START_PERCENT)から左(OBSTACLE_END_PERCENT)へ一定速度で
+// トラック全体を横切る(ザコと同じ動き)。ボスの位置(78%)を先に通り、
+// そのあと自キャラの位置(12%)を通る。domain側のobstacleTimesMsは「ボスの位置を
+// 通過する時刻」として扱い、自キャラのジャンプだけその分だけ遅らせて同期させる。
+const OBSTACLE_SPAN = OBSTACLE_START_PERCENT - OBSTACLE_END_PERCENT;
+const MS_TO_OPPONENT = ((OBSTACLE_START_PERCENT - OPPONENT_LEFT_PERCENT) / OBSTACLE_SPAN) * OBSTACLE_TRAVEL_MS;
+const MS_TO_RUNNER = ((OBSTACLE_START_PERCENT - RUNNER_LEFT_PERCENT) / OBSTACLE_SPAN) * OBSTACLE_TRAVEL_MS;
+const RUNNER_JUMP_DELAY_MS = MS_TO_RUNNER - MS_TO_OPPONENT;
 
 /**
  * 「耳アド UI手触り仕様書」0章: 走行シーン(トラック)の実体。アイドル時(ザコ追い抜きループ)と
@@ -58,9 +69,13 @@ export function TrackScene(props: Props) {
   const paused = props.mode === 'idle' ? props.paused : true;
   const bossReady = props.mode === 'idle' ? props.bossReady : false;
   const battleElapsed = props.mode === 'battle' ? props.elapsedMs : 0;
-  const battleJumpTimes = props.mode === 'battle' ? props.jumpTimesMs : EMPTY_JUMPS;
+  const opponentJumpTimes = props.mode === 'battle' ? props.jumpTimesMs : EMPTY_JUMPS;
   const burstTrigger = props.burstTrigger ?? 0;
   const exitSide = props.mode === 'battle' ? props.exitSide ?? null : null;
+  const opponentJumpTimesKey = opponentJumpTimes.join(',');
+  // 自キャラは同じ障害物がさらに奥まで進んでから届くので、その分だけジャンプを遅らせる。
+  const runnerJumpTimes =
+    props.mode === 'battle' ? opponentJumpTimes.map((t) => t + RUNNER_JUMP_DELAY_MS) : EMPTY_JUMPS;
 
   const [zakoList, setZakoList] = useState<{ id: number; name: string; color: string }[]>([]);
 
@@ -82,8 +97,32 @@ export function TrackScene(props: Props) {
     wasPausedRef.current = paused;
   }, [paused]);
 
-  const runnerJump = useObstacleJump(battleElapsed, battleJumpTimes);
-  const opponentJump = useObstacleJump(battleElapsed, battleJumpTimes);
+  const runnerJump = useObstacleJump(battleElapsed, runnerJumpTimes);
+  const opponentJump = useObstacleJump(battleElapsed, opponentJumpTimes);
+
+  // 障害物本体(見た目)。ボスの位置に届く時刻(=jumpTimesMsの各要素)より
+  // MS_TO_OPPONENT分だけ早く画面右から出発させることで、ちょうどそのタイミングで
+  // ボスの位置(78%)を通過するようにする(そのまま自キャラの位置も後から通過する)。
+  const [obstacleList, setObstacleList] = useState<{ id: number }[]>([]);
+  const obstacleIdxRef = useRef(0);
+  useEffect(() => {
+    obstacleIdxRef.current = 0;
+  }, [opponentJumpTimesKey]);
+  useEffect(() => {
+    if (props.mode !== 'battle') return;
+    while (
+      obstacleIdxRef.current < opponentJumpTimes.length &&
+      opponentJumpTimes[obstacleIdxRef.current] - MS_TO_OPPONENT <= battleElapsed
+    ) {
+      obstacleIdxRef.current += 1;
+      setObstacleList((prev) => [...prev, { id: obstacleIdSeq++ }]);
+    }
+  }, [props.mode, battleElapsed, opponentJumpTimesKey, opponentJumpTimes]);
+  const wasObstaclePausedRef = useRef(paused);
+  useEffect(() => {
+    if (paused && !wasObstaclePausedRef.current) setObstacleList([]);
+    wasObstaclePausedRef.current = paused;
+  }, [paused]);
 
   // 仕様書6章: 勝敗時、自キャラ(または相手)が右へ加速して退場する(0.45秒)。
   const [runnerExitAnim] = useState(() => new Animated.Value(0));
@@ -132,8 +171,12 @@ export function TrackScene(props: Props) {
             exit={exitSide === 'opponent'}
             jump={opponentJump}
           />
-          <ObstacleMarker elapsedMs={battleElapsed} jumpTimesMs={battleJumpTimes} leftPercent={RUNNER_LEFT_PERCENT} />
-          <ObstacleMarker elapsedMs={battleElapsed} jumpTimesMs={battleJumpTimes} leftPercent={OPPONENT_LEFT_PERCENT} />
+          {obstacleList.map((o) => (
+            <TrackObstacle
+              key={o.id}
+              onExit={() => setObstacleList((prev) => prev.filter((x) => x.id !== o.id))}
+            />
+          ))}
         </>
       )}
     </View>
