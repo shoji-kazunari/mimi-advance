@@ -1,21 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 interface Props {
   label?: string;
+  /** 帯が右から左へ画面を覆い切るまでの時間。仕様書6章: 0.4秒。 */
   durationMs?: number;
   onDone?: () => void;
 }
 
-/** 全画面を覆う黒フェード。仕様書5-6章の「黒フェードで通常表示に復帰」演出用。 */
-export function BlackFade({ label, durationMs = 400, onDone }: Props) {
-  // レンダー中にref.currentを読まない(react-hooks/refs)ため、useState の遅延初期化で持つ。
-  const [opacity] = useState(() => new Animated.Value(0));
+const DEFAULT_DURATION_MS = 400;
+
+/**
+ * 「耳アド UI手触り仕様書」6章の画面ワイプ。黒い帯が右から左へ高速でスライドしてきて
+ * 画面全体を覆う(単純なopacityフェードではなく、方向性のあるワイプにする)。
+ * 覆い切った後はそのまま保持する(呼び出し側がlabelを見せてから明示的にアンマウントする)。
+ */
+export function BlackFade({ label, durationMs = DEFAULT_DURATION_MS, onDone }: Props) {
+  const { width } = useWindowDimensions();
+  const [anim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    const animation = Animated.timing(opacity, {
+    const animation = Animated.timing(anim, {
       toValue: 1,
       duration: durationMs,
+      easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     });
     animation.start(({ finished }) => {
@@ -25,8 +33,10 @@ export function BlackFade({ label, durationMs = 400, onDone }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [width, 0] });
+
   return (
-    <Animated.View style={[styles.fade, { opacity }]}>
+    <Animated.View style={[styles.fade, { transform: [{ translateX }] }]}>
       {label && <Text style={styles.label}>{label}</Text>}
     </Animated.View>
   );

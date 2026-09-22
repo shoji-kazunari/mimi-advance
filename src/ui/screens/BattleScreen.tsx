@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CombatantProfile } from '../../domain/battle';
 import { BlackFade } from '../components/BlackFade';
 import { GaugeBar } from '../components/GaugeBar';
 import { useBattlePlayback } from '../hooks/useBattlePlayback';
+import { useShake } from '../hooks/useShake';
+import { useNotifications } from '../Notifications';
 import { colors } from '../theme';
 
 interface Props {
@@ -16,6 +18,9 @@ interface Props {
 
 const INTRO_MS = 2000;
 const RESULT_HOLD_MS = 2000;
+// アタック発動直後だけ、スタミナゲージの減少を0.35秒かけてイーズアウトさせる(仕様書6章)。
+const ATTACK_GAUGE_EASE_MS = 350;
+const NORMAL_GAUGE_MS = 50;
 
 type Phase = 'intro' | 'battle' | 'outro';
 
@@ -27,7 +32,39 @@ type Phase = 'intro' | 'battle' | 'outro';
  */
 export function BattleScreen({ title, opponentName, me, opponent, onFinished }: Props) {
   const [phase, setPhase] = useState<Phase>('intro');
-  const { timeline, frame, finished, skip, sprinting, won } = useBattlePlayback(me, opponent);
+  const { showToast } = useNotifications();
+  const { translateX, trigger: triggerShake } = useShake();
+  const [meGaugeMs, setMeGaugeMs] = useState(NORMAL_GAUGE_MS);
+  const [opponentGaugeMs, setOpponentGaugeMs] = useState(NORMAL_GAUGE_MS);
+  const meBoostTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opponentBoostTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const boostGauge = (setter: (ms: number) => void, timerRef: { current: ReturnType<typeof setTimeout> | null }) => {
+    setter(ATTACK_GAUGE_EASE_MS);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setter(NORMAL_GAUGE_MS), ATTACK_GAUGE_EASE_MS);
+  };
+
+  const { timeline, frame, finished, skip, sprinting, won } = useBattlePlayback(me, opponent, {
+    onMyAttack: () => {
+      showToast('アタック発動！スタミナを削った！');
+      triggerShake();
+      boostGauge(setOpponentGaugeMs, opponentBoostTimer);
+    },
+    onOpponentAttack: () => {
+      triggerShake();
+      boostGauge(setMeGaugeMs, meBoostTimer);
+    },
+  });
+
+  useEffect(
+    () => () => {
+      if (meBoostTimer.current) clearTimeout(meBoostTimer.current);
+      if (opponentBoostTimer.current) clearTimeout(opponentBoostTimer.current);
+    },
+    []
+  );
+
   const resultTimerStarted = useRef(false);
 
   // onFinishedは親の再レンダーのたびに新しい関数参照になり得るため、常に最新の値をrefで持つ
@@ -65,12 +102,18 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
   }
 
   return (
-    <View style={styles.screen}>
+    <Animated.View style={[styles.screen, { transform: [{ translateX }] }]}>
       <Text style={styles.title}>{title}</Text>
 
       <View style={styles.combatantBlock}>
         <Text style={styles.name}>自分{sprinting ? ' ⚡全力疾走' : ''}</Text>
-        <GaugeBar ratio={frame.meStamina / timeline.meMaxStamina} color={colors.primary} height={20} animationMs={80} />
+        <GaugeBar
+          ratio={frame.meStamina / timeline.meMaxStamina}
+          color={colors.primary}
+          height={20}
+          animationMs={meGaugeMs}
+          glowing={sprinting}
+        />
         <Text style={styles.staminaText}>
           {Math.max(0, Math.round(frame.meStamina))} / {Math.round(timeline.meMaxStamina)}
         </Text>
@@ -78,7 +121,12 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
 
       <View style={styles.combatantBlock}>
         <Text style={styles.name}>{opponentName}</Text>
-        <GaugeBar ratio={frame.opponentStamina / timeline.opponentMaxStamina} color={colors.danger} height={20} animationMs={80} />
+        <GaugeBar
+          ratio={frame.opponentStamina / timeline.opponentMaxStamina}
+          color={colors.danger}
+          height={20}
+          animationMs={opponentGaugeMs}
+        />
         <Text style={styles.staminaText}>
           {Math.max(0, Math.round(frame.opponentStamina))} / {Math.round(timeline.opponentMaxStamina)}
         </Text>
@@ -91,7 +139,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
       ) : (
         <Text style={styles.resultBanner}>{won ? 'WIN' : 'LOSE'}</Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

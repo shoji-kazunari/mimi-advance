@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Animated, StyleSheet } from 'react-native';
+import { colors } from '../theme';
 
 interface Props {
   text: string;
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '35%',
     alignSelf: 'center',
-    color: '#3ee08a',
+    color: colors.mint,
     fontSize: 20,
     fontWeight: '800',
   },

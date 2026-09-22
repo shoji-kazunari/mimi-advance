@@ -22,6 +22,7 @@ export function StatCard({ statKey, level, cost, locked, lockedHint, atCap, onUp
       subtitle={locked ? lockedHint ?? 'ロック中' : `Lv. ${level.toFixed(1)}`}
       buttonLabel={locked ? 'ロック中' : atCap ? '上限' : `${cost}pt`}
       disabled={disabled}
+      locked={locked}
       onPress={onUpgrade}
     />
   );

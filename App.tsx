@@ -6,7 +6,7 @@ import { highestLevelCharacter } from './src/domain/stats';
 import { VsOpponent, vsRaceVicReward } from './src/domain/vsRace';
 import { useGameStore } from './src/state/gameStore';
 import { useActiveCharacter } from './src/state/selectors';
-import { NotificationProvider } from './src/ui/Notifications';
+import { NotificationProvider, useNotifications } from './src/ui/Notifications';
 import { BattleScreen } from './src/ui/screens/BattleScreen';
 import { CharacterDetailScreen } from './src/ui/screens/CharacterDetailScreen';
 import { CharacterListScreen } from './src/ui/screens/CharacterListScreen';
@@ -33,6 +33,7 @@ function Root() {
   const characters = useGameStore((s) => s.state.characters);
   const character = useActiveCharacter();
   const [overlay, setOverlay] = useState<Overlay | null>(null);
+  const { showToast } = useNotifications();
 
   useEffect(() => {
     void hydrate();
@@ -100,7 +101,9 @@ function Root() {
             me={vsBattleProfiles.me}
             opponent={vsBattleProfiles.opponentProfile}
             onFinished={(won) => {
-              resolveVsRace(vsRaceVicReward(overlay.opponent.totalLv), won);
+              const vicGained = vsRaceVicReward(overlay.opponent.totalLv);
+              resolveVsRace(vicGained, won);
+              showToast(won ? [{ text: `WIN！ +${vicGained} Vicマネー`, color: colors.mint }] : 'LOSE...');
               setOverlay(null);
             }}
           />

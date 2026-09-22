@@ -20,7 +20,7 @@ export function CharacterDetailScreen({ defId, onBack }: Props) {
   const setActiveCharacter = useGameStore((s) => s.setActiveCharacter);
   const tryEvolve = useGameStore((s) => s.tryEvolve);
   const setCostume = useGameStore((s) => s.setCostume);
-  const { showPopup } = useNotifications();
+  const { showPopup, showToast } = useNotifications();
   const [previewVisible, setPreviewVisible] = useState(false);
 
   const character = state.characters.find((c) => c.defId === defId);
@@ -99,7 +99,10 @@ export function CharacterDetailScreen({ defId, onBack }: Props) {
       <Pressable
         disabled={isActive}
         style={[styles.actionButton, { backgroundColor: isActive ? colors.locked : colors.primary }]}
-        onPress={() => setActiveCharacter(defId)}
+        onPress={() => {
+          setActiveCharacter(defId);
+          showToast(`${character.name} に交代しました`);
+        }}
       >
         <Text style={styles.actionButtonText}>{isActive ? '操作中' : 'ランナーに交代'}</Text>
       </Pressable>

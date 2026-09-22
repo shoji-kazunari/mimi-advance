@@ -1,11 +1,11 @@
-/** 仕様書10章。ステータスごとのカード色。プロトタイプの配色に合わせている。 */
+/** 「耳アド UI手触り仕様書」3章。ステータスごとのカード色(固定値)。 */
 export const STAT_COLORS: Record<string, string> = {
-  speed: '#3b82f6',
-  stamina: '#f0a020',
-  guts: '#9d5ce8',
-  technique: '#2fd193',
-  damage: '#ef4a6e',
-  shoe: '#e0b23a',
+  speed: '#4d7cff',
+  stamina: '#ffb84d',
+  guts: '#b27bff',
+  technique: '#3fe0b0',
+  damage: '#ff5d5d',
+  shoe: '#ffd23f',
 };
 
 export const STAT_LABELS: Record<string, string> = {
@@ -16,21 +16,24 @@ export const STAT_LABELS: Record<string, string> = {
   damage: 'アタック',
 };
 
-/** プロトタイプに合わせたダークテーマ。 */
+/** 「耳アド UI手触り仕様書」3章の配色に合わせたダークテーマ。 */
 export const colors = {
-  background: '#0a0a12',
-  card: '#201c3d',
-  cardInset: '#181430',
-  border: '#332b5c',
+  background: '#1a1533',
+  backgroundGradient: ['#1a1533', '#241a44'] as [string, string],
+  card: '#241d47',
+  cardInset: '#1c1638',
+  border: '#3a2c66',
   text: '#f2f0fb',
   subtext: '#9d97ba',
-  primary: '#3b82f6',
-  accent: '#ff4d94',
-  danger: '#ef4a6e',
-  locked: '#3a3460',
+  primary: '#4d7cff',
+  accent: '#ff5d9e',
+  danger: '#ff5d5d',
+  locked: '#3a2c66',
   lockedText: '#726c93',
-  gaugeStart: '#2fd193',
-  gaugeEnd: '#ff4d94',
-  gaugeReadyStart: '#ffb020',
-  gaugeReadyEnd: '#ef4a6e',
+  gold: '#ffd23f',
+  mint: '#3fe0b0',
+  gaugeStart: '#3fe0b0',
+  gaugeEnd: '#ff5d9e',
+  gaugeReadyStart: '#ffb84d',
+  gaugeReadyEnd: '#ff5d5d',
 };

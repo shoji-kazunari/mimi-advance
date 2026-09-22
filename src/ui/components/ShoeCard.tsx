@@ -23,6 +23,7 @@ export function ShoeCard({ shoeUnlocked, shoeLevel, vicMoney, onUnlock, onUpgrad
         subtitle={`${SHOE_UNLOCK_COST} Vicで解放`}
         buttonLabel="解放する"
         disabled={!affordable}
+        locked
         onPress={onUnlock}
       />
     );

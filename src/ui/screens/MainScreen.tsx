@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { bossCombatantProfile, selfCombatantProfile } from '../../domain/battle';
 import { effectiveStatValue, isStatUnlocked, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
-import { zakoPtGained, zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
+import { bossRunnerPtReward, bossVicMoneyReward, zakoPtGained, zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
 import { isVsRaceUnlocked, VS_RACE_UNLOCK_STAGE } from '../../domain/vsRace';
 import { SHOE_UNLOCK_COST } from '../../domain/shoes';
 import { STAT_KEYS } from '../../domain/types';
@@ -13,6 +13,7 @@ import { BlackFade } from '../components/BlackFade';
 import { BossPanelBattle } from '../components/BossPanelBattle';
 import { BossPill } from '../components/BossPill';
 import { FloatingPoint } from '../components/FloatingPoint';
+import { RunnerAvatar } from '../components/RunnerAvatar';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
 import { SaveCodeModal } from './SaveCodeModal';
@@ -41,7 +42,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const setUsername = useGameStore((s) => s.setUsername);
   const resolveBossBattle = useGameStore((s) => s.resolveBossBattle);
   const refreshVsRaceReset = useGameStore((s) => s.refreshVsRaceReset);
-  const { showPopup } = useNotifications();
+  const { showPopup, showToast } = useNotifications();
   const character = useActiveCharacter();
 
   // アプリを起動したまま日付をまたいだ場合でも、VSレースの残り回数が
@@ -71,12 +72,19 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
     const clearedStage = character.stage;
     resolveBossBattle(character.defId, won);
     if (won) {
+      showToast([
+        { text: `+${bossRunnerPtReward(clearedStage)}ランナーpt`, color: colors.gold },
+        { text: `+${bossVicMoneyReward(clearedStage)} Vicマネー`, color: colors.mint },
+      ]);
       setWinFadeStage(clearedStage);
     } else {
+      showToast('逃げられた...');
+      showToast('トレーニングして再挑戦しよう');
       setInBossBattle(false);
     }
   };
 
+  const [burstTrigger, setBurstTrigger] = useState(0);
   const [usernameModal, setUsernameModal] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState(state.username);
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -93,6 +101,14 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const bossReady = character.zakoDefeated >= required;
   const gutsEff = effectiveStatValue(character.stats, 'guts', character.evolutionStage);
   const techniqueEff = effectiveStatValue(character.stats, 'technique', character.evolutionStage);
+
+  const wasBossReadyRef = useRef(bossReady);
+  useEffect(() => {
+    if (bossReady && !wasBossReadyRef.current) {
+      showToast('ボス出現！');
+    }
+    wasBossReadyRef.current = bossReady;
+  }, [bossReady, showToast]);
 
   useEffect(() => {
     // バトル中(黒フェードも含む)だけ追い抜きを止める。ボスが出現済みでも、
@@ -182,7 +198,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
 
         <View style={styles.track}>
           <View style={styles.trackScene}>
-            <View style={styles.runnerAvatar} />
+            <RunnerAvatar burstTrigger={burstTrigger} />
             {inBossBattle ? null : bossReady ? (
               <View style={styles.actorGroup}>
                 <View style={styles.bossAvatar} />
@@ -254,7 +270,10 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                   locked={locked}
                   lockedHint={stat === 'technique' ? '進化2で解放' : stat === 'damage' ? '進化3で解放' : undefined}
                   atCap={level >= cap}
-                  onUpgrade={() => upgradeStat(character.defId, stat)}
+                  onUpgrade={() => {
+                    upgradeStat(character.defId, stat);
+                    setBurstTrigger((v) => v + 1);
+                  }}
                 />
               );
             })}
@@ -268,7 +287,10 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                   unlockShoe(character.defId);
                   showPopup('シューズ解放', 'シューズが解放されました！');
                 }}
-                onUpgrade={() => upgradeShoe(character.defId)}
+                onUpgrade={() => {
+                  upgradeShoe(character.defId);
+                  setBurstTrigger((v) => v + 1);
+                }}
               />
             </View>
           </View>
@@ -450,12 +472,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-evenly',
     paddingHorizontal: 20,
-  },
-  runnerAvatar: {
-    width: 40,
-    height: 56,
-    borderRadius: 20,
-    backgroundColor: colors.accent,
   },
   actorGroup: { alignItems: 'center', gap: 6, maxWidth: 100 },
   zakoAvatar: { width: 28, height: 40, borderRadius: 14 },
