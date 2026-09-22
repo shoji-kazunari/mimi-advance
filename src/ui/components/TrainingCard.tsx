@@ -17,12 +17,15 @@ interface Props {
   onPress: () => void;
 }
 
-// タップ操作でのブラウザ標準の挙動(テキスト選択・長押しコールアウトメニュー)を止める。
-// RNのスタイル型には無いプロパティなのでキャストする(RN Web/一部ネイティマイズで有効)。
+// タップ操作でのブラウザ/iOS標準の挙動(テキスト選択・長押しの拡大鏡・コールアウトメニュー)を
+// 止める。touchActionが無いと、子のuserSelect/WebkitTouchCalloutだけでは
+// タッチイベントを受け取る要素(buttonTouchArea)自体の長押し判定を止めきれない。
+// RNのスタイル型には無いプロパティなのでキャストする(RN Webでのみ有効、ネイティブでは無視される)。
 const noTextSelect = {
   userSelect: 'none',
   WebkitUserSelect: 'none',
   WebkitTouchCallout: 'none',
+  touchAction: 'none',
 } as unknown as StyleProp<ViewStyle>;
 
 const SQUISH_MS = 160;
@@ -68,14 +71,14 @@ export function TrainingCard({ color, title, subtitle, buttonLabel, disabled, lo
   const panHandlers = useHoldRepeat({ onFire: fire, disabled });
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, noTextSelect]}>
       <Text style={[styles.name, { color }]} numberOfLines={2}>
         {title}
       </Text>
       <Text style={[styles.level, locked && styles.levelDisabled]} numberOfLines={1}>
         {subtitle}
       </Text>
-      <View style={styles.buttonTouchArea} {...(disabled ? {} : panHandlers)}>
+      <View style={[styles.buttonTouchArea, noTextSelect]} {...(disabled ? {} : panHandlers)}>
         <Animated.View
           style={[
             styles.button,
