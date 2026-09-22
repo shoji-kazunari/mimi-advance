@@ -2,6 +2,7 @@ import { useGameStore, newGameState } from '../gameStore';
 import { STARTER_CHARACTER } from '../../domain/characters';
 import { statUpgradeCost } from '../../domain/stats';
 import { shoeCostFor, SHOE_UNLOCK_COST } from '../../domain/shoes';
+import { todayDateString } from '../../domain/vsRace';
 
 function resetStore() {
   useGameStore.setState({ state: newGameState(), hydrated: true });
@@ -192,5 +193,23 @@ describe('loadState', () => {
     };
     useGameStore.getState().loadState(incoming);
     expect(useGameStore.getState().state.vsRace.remaining).toBeGreaterThan(0);
+  });
+});
+
+describe('refreshVsRaceReset', () => {
+  it('日付が変わっていれば残り回数をリセットする', () => {
+    useGameStore.setState((s) => ({
+      state: { ...s.state, vsRace: { remaining: 0, lastResetDate: '2000-01-01' } },
+    }));
+    useGameStore.getState().refreshVsRaceReset();
+    expect(useGameStore.getState().state.vsRace.remaining).toBeGreaterThan(0);
+  });
+
+  it('既に今日の日付なら残り回数は変えない', () => {
+    useGameStore.setState((s) => ({
+      state: { ...s.state, vsRace: { remaining: 3, lastResetDate: todayDateString() } },
+    }));
+    useGameStore.getState().refreshVsRaceReset();
+    expect(useGameStore.getState().state.vsRace.remaining).toBe(3);
   });
 });

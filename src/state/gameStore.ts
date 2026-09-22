@@ -57,6 +57,7 @@ interface GameStore {
   resolveBossBattle: (defId: string, won: boolean) => void;
   resolveVsRace: (vicGained: number, won: boolean) => void;
   loadState: (state: GameState) => void;
+  refreshVsRaceReset: () => void;
 }
 
 function activeCharacter(state: GameState): OwnedCharacter {
@@ -272,5 +273,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   loadState: (loaded) => {
     get().setState(() => ({ ...loaded, vsRace: resetVsRaceIfNewDay(loaded.vsRace) }));
+  },
+
+  refreshVsRaceReset: () => {
+    const current = get().state.vsRace;
+    const next = resetVsRaceIfNewDay(current);
+    if (next === current) return; // 日付が変わっていなければ何もしない(無駄な保存を避ける)
+    get().setState((state) => ({ ...state, vsRace: next }));
   },
 }));

@@ -32,8 +32,16 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const upgradeShoe = useGameStore((s) => s.upgradeShoe);
   const setUsername = useGameStore((s) => s.setUsername);
   const resolveBossBattle = useGameStore((s) => s.resolveBossBattle);
+  const refreshVsRaceReset = useGameStore((s) => s.refreshVsRaceReset);
   const { showToast, showPopup } = useNotifications();
   const character = useActiveCharacter();
+
+  // アプリを起動したまま日付をまたいだ場合でも、VSレースの残り回数が
+  // 次のアクションを待たずに更新されるように定期チェックする。
+  useEffect(() => {
+    const id = setInterval(refreshVsRaceReset, 60000);
+    return () => clearInterval(id);
+  }, [refreshVsRaceReset]);
 
   const [inBossBattle, setInBossBattle] = useState(false);
   const [winFadeStage, setWinFadeStage] = useState<number | null>(null);
