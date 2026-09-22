@@ -7,7 +7,9 @@ import { VsOpponent, vsRaceVicReward } from './src/domain/vsRace';
 import { useGameStore } from './src/state/gameStore';
 import { useActiveCharacter } from './src/state/selectors';
 import { NotificationProvider, useNotifications } from './src/ui/Notifications';
+import { applyWebTouchFix } from './src/ui/webTouchFix';
 import { BattleScreen } from './src/ui/screens/BattleScreen';
+import { ButtonLab } from './src/ui/screens/ButtonLab';
 import { CharacterDetailScreen } from './src/ui/screens/CharacterDetailScreen';
 import { CharacterListScreen } from './src/ui/screens/CharacterListScreen';
 import { MainScreen } from './src/ui/screens/MainScreen';
@@ -113,7 +115,22 @@ function Root() {
   );
 }
 
+// 手触り確認用の最小ページ。シェルHTML側で window.__MIMI_LAB__ を立てたビルドだけがここに入る。
+const isButtonLab =
+  typeof window !== 'undefined' && (window as unknown as { __MIMI_LAB__?: boolean }).__MIMI_LAB__ === true;
+
 export default function App() {
+  applyWebTouchFix();
+
+  if (isButtonLab) {
+    return (
+      <>
+        <ButtonLab />
+        <StatusBar style="auto" />
+      </>
+    );
+  }
+
   return (
     <NotificationProvider>
       <Root />
