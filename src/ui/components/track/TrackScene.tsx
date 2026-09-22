@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useObstacleJump } from '../../hooks/useObstacleJump';
 import { RunnerAvatar } from '../RunnerAvatar';
 import { OpponentEntity } from './OpponentEntity';
@@ -35,12 +35,15 @@ interface BattleProps {
   /** timeline.obstacleTimesMs。自キャラ・ボス双方が同じ地点で跳ぶ。 */
   jumpTimesMs: number[];
   burstTrigger?: number;
+  /** 勝敗演出: 'me'で自キャラが、'opponent'で相手が右へ加速して退場する(仕様書6章)。 */
+  exitSide?: 'me' | 'opponent' | null;
 }
 
 type Props = IdleProps | BattleProps;
 
 let zakoIdSeq = 0;
 const RUNNER_LEFT_PERCENT = 12;
+const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
 
 /**
@@ -55,6 +58,7 @@ export function TrackScene(props: Props) {
   const battleElapsed = props.mode === 'battle' ? props.elapsedMs : 0;
   const battleJumpTimes = props.mode === 'battle' ? props.jumpTimesMs : EMPTY_JUMPS;
   const burstTrigger = props.burstTrigger ?? 0;
+  const exitSide = props.mode === 'battle' ? props.exitSide ?? null : null;
 
   const [zakoList, setZakoList] = useState<{ id: number; name: string; color: string }[]>([]);
 
@@ -79,12 +83,31 @@ export function TrackScene(props: Props) {
   const runnerJump = useObstacleJump(battleElapsed, battleJumpTimes);
   const opponentJump = useObstacleJump(battleElapsed, battleJumpTimes);
 
+  // 仕様書6章: 勝敗時、自キャラ(または相手)が右へ加速して退場する(0.45秒)。
+  const [runnerExitAnim] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    if (exitSide === 'me') {
+      Animated.timing(runnerExitAnim, {
+        toValue: 1,
+        duration: RUNNER_EXIT_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false, // leftはネイティブドライバー非対応
+      }).start();
+    } else {
+      runnerExitAnim.setValue(0);
+    }
+  }, [exitSide, runnerExitAnim]);
+  const runnerLeft = runnerExitAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [`${RUNNER_LEFT_PERCENT}%`, '140%'],
+  });
+
   return (
     <View style={styles.scene}>
       <TrackBackground />
-      <View style={styles.runnerWrap} pointerEvents="none">
+      <Animated.View style={[styles.runnerWrap, { left: runnerLeft }]} pointerEvents="none">
         <RunnerAvatar burstTrigger={burstTrigger} jump={props.mode === 'battle' ? runnerJump : undefined} />
-      </View>
+      </Animated.View>
       {props.mode === 'idle' ? (
         <>
           {bossReady && <OpponentEntity label="BOSS" slideIn />}
@@ -103,6 +126,7 @@ export function TrackScene(props: Props) {
           label={props.opponentLabel}
           color={props.opponentColor}
           slideIn={false}
+          exit={exitSide === 'opponent'}
           jump={opponentJump}
         />
       )}
@@ -112,5 +136,5 @@ export function TrackScene(props: Props) {
 
 const styles = StyleSheet.create({
   scene: { flex: 1, position: 'relative' },
-  runnerWrap: { position: 'absolute', top: '22%', left: `${RUNNER_LEFT_PERCENT}%`, marginLeft: -20 },
+  runnerWrap: { position: 'absolute', top: '22%', marginLeft: -20 },
 });

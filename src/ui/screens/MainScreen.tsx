@@ -14,6 +14,7 @@ import { useNotifications } from '../Notifications';
 import { BlackFade } from '../components/BlackFade';
 import { BossBattleControls } from '../components/BossBattleControls';
 import { BossPill } from '../components/BossPill';
+import { CenterBanner } from '../components/CenterBanner';
 import { FloatingPoint } from '../components/FloatingPoint';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
@@ -25,6 +26,15 @@ const NG_WORDS = ['死ね', 'クソ', 'アホ'];
 const ATTACK_GAUGE_EASE_MS = 350;
 const NORMAL_GAUGE_MS = 50;
 const RESULT_HOLD_MS = 1200;
+// 仕様書6章: 自キャラ(または相手)が右へ加速して退場、0.45秒。
+const EXIT_MS = 450;
+// 仕様書6章: 「ステージNクリア！」の中央バナー、1.2秒。
+const BANNER_MS = 1200;
+
+type PostBattlePhase =
+  | { kind: 'exiting'; side: 'me' | 'opponent'; clearedStage: number | null }
+  | { kind: 'banner'; text: string }
+  | { kind: 'wiping' };
 
 // バトル中でない間、useBattlePlaybackに渡すダミーのプロファイル(フックは条件分岐で
 // 呼べないため、常に呼びつつ`active: false`で再生を止めておく)。
@@ -64,7 +74,8 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   }, [refreshVsRaceReset]);
 
   const [inBossBattle, setInBossBattle] = useState(false);
-  const [winFadeStage, setWinFadeStage] = useState<number | null>(null);
+  const [enteringBattle, setEnteringBattle] = useState(false);
+  const [postBattle, setPostBattle] = useState<PostBattlePhase | null>(null);
 
   // 「ボスバトル」ボタンを押した瞬間の値で固定する。inBossBattleの真偽値自体は
   // ボタンを押した時にしか変わらないため、これをキーにすることで、バトル中に
@@ -132,11 +143,11 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
           { text: `+${bossRunnerPtReward(clearedStage)}ランナーpt`, color: colors.gold },
           { text: `+${bossVicMoneyReward(clearedStage)} Vicマネー`, color: colors.mint },
         ]);
-        setWinFadeStage(clearedStage);
+        setPostBattle({ kind: 'exiting', side: 'me', clearedStage });
       } else {
         showToast('逃げられた...');
         showToast('トレーニングして再挑戦しよう');
-        setInBossBattle(false);
+        setPostBattle({ kind: 'exiting', side: 'opponent', clearedStage: null });
       }
     };
   });
@@ -147,6 +158,27 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
     const timer = setTimeout(() => handleBossSettledRef.current(battlePlayback.won), RESULT_HOLD_MS);
     return () => clearTimeout(timer);
   }, [inBossBattle, battlePlayback.finished, battlePlayback.won]);
+
+  // 勝敗が決まった後の演出の段取り(仕様書6章): 退場(0.45秒)→[勝利のみ]中央バナー(1.2秒)
+  // →黒ワイプ。ゲージ表示(BossBattleControls)はinBossBattleがtrueのままの間ずっと
+  // 最終結果を表示し続け、ワイプが完全に覆った瞬間にまとめて通常表示へ切り替える。
+  useEffect(() => {
+    if (!postBattle) return;
+    if (postBattle.kind === 'exiting') {
+      const timer = setTimeout(() => {
+        setPostBattle(
+          postBattle.side === 'me' && postBattle.clearedStage !== null
+            ? { kind: 'banner', text: `ステージ${postBattle.clearedStage} クリア！` }
+            : { kind: 'wiping' }
+        );
+      }, EXIT_MS);
+      return () => clearTimeout(timer);
+    }
+    if (postBattle.kind === 'banner') {
+      const timer = setTimeout(() => setPostBattle({ kind: 'wiping' }), BANNER_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [postBattle]);
 
   const [burstTrigger, setBurstTrigger] = useState(0);
   const [usernameModal, setUsernameModal] = useState(false);
@@ -248,12 +280,13 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               elapsedMs={battlePlayback.elapsed}
               jumpTimesMs={battlePlayback.timeline.obstacleTimesMs}
               burstTrigger={burstTrigger}
+              exitSide={postBattle?.kind === 'exiting' ? postBattle.side : null}
             />
           ) : (
             <TrackScene
               mode="idle"
               spawnIntervalMs={zakoSpawnIntervalMs(gutsEff)}
-              paused={winFadeStage !== null}
+              paused={false}
               bossReady={bossReady}
               onZakoPass={handleZakoPass}
               burstTrigger={burstTrigger}
@@ -268,6 +301,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               />
             ))}
           </View>
+          {postBattle?.kind === 'banner' && <CenterBanner text={postBattle.text} />}
         </Animated.View>
 
         <Animated.View
@@ -290,7 +324,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               ready={bossReady}
               current={character.zakoDefeated}
               required={required}
-              onPress={() => setInBossBattle(true)}
+              onPress={() => setEnteringBattle(true)}
             />
           )}
         </Animated.View>
@@ -462,12 +496,20 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
         <SaveCodeModal visible={saveCodeVisible} onClose={() => setSaveCodeVisible(false)} />
       </ScrollView>
 
-      {winFadeStage !== null && (
+      {postBattle?.kind === 'wiping' && (
         <BlackFade
-          label="WIN"
           onDone={() => {
-            setWinFadeStage(null);
+            setPostBattle(null);
             setInBossBattle(false);
+          }}
+        />
+      )}
+
+      {enteringBattle && (
+        <BlackFade
+          onDone={() => {
+            setEnteringBattle(false);
+            setInBossBattle(true);
           }}
         />
       )}
