@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from './theme';
 
 export interface ToastSegment {
@@ -8,7 +8,7 @@ export interface ToastSegment {
 }
 export type ToastMessage = string | ToastSegment[];
 
-interface ToastItem {
+export interface ToastItem {
   id: number;
   message: ToastMessage;
 }
@@ -23,6 +23,9 @@ interface NotificationContextValue {
   showToast: (message: ToastMessage) => void;
   /** 完了系の通知(進化・シューズ解放・新キャラ解放の完了はポップアップ) */
   showPopup: (title: string, message: string) => void;
+  /** 現在表示中のトースト一覧。トースト自体の描画はTrackToastLayer(track内)が行う。 */
+  toasts: ToastItem[];
+  removeToast: (id: number) => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -32,11 +35,6 @@ export function useNotifications(): NotificationContextValue {
   if (!ctx) throw new Error('NotificationProviderの外で使われています');
   return ctx;
 }
-
-// 「耳アド UI手触り仕様書」4章の数値。
-const TOAST_ENTER_MS = 250;
-const TOAST_HOLD_MS = 2700;
-const TOAST_EXIT_MS = 400;
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -56,23 +54,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setPopup({ title, message });
   }, []);
 
-  // トースト自体の表示/消去でNotificationProviderが再レンダーされても、value のオブジェクト
-  // 参照が毎回変わらないようにする。ここを素の{ showToast, showPopup }のままにすると、
-  // トーストが出るたび・消えるたびに useNotifications() を使う全画面(Root, MainScreenなど)
-  // が無関係に再レンダーされてしまう。
   const value = useMemo<NotificationContextValue>(
-    () => ({ showToast, showPopup }),
-    [showToast, showPopup]
+    () => ({ showToast, showPopup, toasts, removeToast }),
+    [showToast, showPopup, toasts, removeToast]
   );
 
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      <View style={styles.toastLayer} pointerEvents="none">
-        {toasts.map((t) => (
-          <ToastView key={t.id} message={t.message} onDone={() => removeToast(t.id)} />
-        ))}
-      </View>
       <Modal visible={!!popup} transparent animationType="fade">
         <View style={styles.popupBackdrop}>
           <View style={styles.popupCard}>
@@ -88,77 +77,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   );
 }
 
-/**
- * トースト1件の入退場アニメーション。仕様書4章:
- * 入場0.25秒(フェード+translateY(-6px)→0)、表示2.7秒キープ、退場0.4秒でフェードアウト。
- */
-function ToastView({ message, onDone }: { message: ToastMessage; onDone: () => void }) {
-  const [anim] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    let holdTimer: ReturnType<typeof setTimeout> | null = null;
-    const enterAnim = Animated.timing(anim, {
-      toValue: 1,
-      duration: TOAST_ENTER_MS,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    });
-    enterAnim.start(({ finished }) => {
-      if (!finished) return;
-      holdTimer = setTimeout(() => {
-        Animated.timing(anim, {
-          toValue: 0,
-          duration: TOAST_EXIT_MS,
-          easing: Easing.in(Easing.ease),
-          useNativeDriver: true,
-        }).start(({ finished: exited }) => {
-          if (exited) onDone();
-        });
-      }, TOAST_HOLD_MS);
-    });
-    return () => {
-      enterAnim.stop();
-      if (holdTimer) clearTimeout(holdTimer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] });
-  const segments: ToastSegment[] = typeof message === 'string' ? [{ text: message }] : message;
-
-  return (
-    <Animated.View style={[styles.toast, { opacity: anim, transform: [{ translateY }] }]}>
-      <Text style={styles.toastText}>
-        {segments.map((seg, i) => (
-          <Text key={i} style={seg.color ? { color: seg.color } : undefined}>
-            {i > 0 ? '   ' : ''}
-            {seg.text}
-          </Text>
-        ))}
-      </Text>
-    </Animated.View>
-  );
-}
-
 const styles = StyleSheet.create({
-  toastLayer: {
-    position: 'absolute',
-    // 画面上部、track内に浮かぶ形(仕様書4章)。ヘッダー分を避けつつtrackの高さに収まる位置。
-    top: 130,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    gap: 8,
-  },
-  toast: {
-    backgroundColor: 'rgba(20,14,40,0.88)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.mint,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  toastText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   popupBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',

@@ -4,6 +4,7 @@ import { CombatantProfile } from '../../domain/battle';
 import { BlackFade } from '../components/BlackFade';
 import { GaugeBar } from '../components/GaugeBar';
 import { TrackScene } from '../components/track/TrackScene';
+import { TrackToastLayer } from '../components/track/TrackToastLayer';
 import { useBattlePlayback } from '../hooks/useBattlePlayback';
 import { useShake } from '../hooks/useShake';
 import { useNotifications } from '../Notifications';
@@ -113,6 +114,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
           elapsedMs={elapsed}
           jumpTimesMs={timeline.obstacleTimesMs}
         />
+        <TrackToastLayer />
       </View>
 
       <View style={styles.combatantBlock}>

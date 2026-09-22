@@ -19,6 +19,7 @@ import { FloatingPoint } from '../components/FloatingPoint';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
 import { TrackScene } from '../components/track/TrackScene';
+import { TrackToastLayer } from '../components/track/TrackToastLayer';
 import { SaveCodeModal } from './SaveCodeModal';
 import { colors } from '../theme';
 
@@ -301,6 +302,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               />
             ))}
           </View>
+          <TrackToastLayer />
           {postBattle?.kind === 'banner' && <CenterBanner text={postBattle.text} />}
 
           {postBattle?.kind === 'wiping' && (
@@ -563,14 +565,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
   },
+  // 自キャラの頭上に小さく浮かぶポップテキスト用のレイヤー。RunnerAvatarの位置
+  // (TrackScene内、left:12%・top:22%)に合わせて、その少し上に配置する。
   popupLayer: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: '4%',
+    left: '12%',
+    marginLeft: -20,
+    width: 40,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   bossPanelWrap: {},
   trainingCard: { backgroundColor: colors.card, borderRadius: 20, padding: 14, gap: 12 },

@@ -9,7 +9,12 @@ interface Props {
 
 const DURATION_MS = 900;
 
-/** ザコ追い抜き時に track 上へ「+10pt」のように浮き上がって消える演出(プロトタイプ準拠)。 */
+/**
+ * 「耳アド UI手触り仕様書」0-2章: ザコ追い抜き時のptは、トラック中央に大きく出す
+ * トーストではなく、キャラの頭上に小さく浮かぶポップテキスト(15px程度、0.9秒で
+ * フェードアウトしながら上に移動)。表示位置は呼び出し側(MainScreen)が
+ * 自キャラの位置に合わせて配置する。
+ */
 export function FloatingPoint({ text, onDone }: Props) {
   const [anim] = useState(() => new Animated.Value(0));
 
@@ -26,7 +31,7 @@ export function FloatingPoint({ text, onDone }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -40] });
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
   const opacity = anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] });
 
   return (
@@ -36,11 +41,8 @@ export function FloatingPoint({ text, onDone }: Props) {
 
 const styles = StyleSheet.create({
   text: {
-    position: 'absolute',
-    top: '35%',
-    alignSelf: 'center',
     color: colors.mint,
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '800',
   },
 });
