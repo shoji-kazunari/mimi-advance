@@ -357,6 +357,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                   locked={locked}
                   lockedHint={stat === 'technique' ? '進化2で解放' : stat === 'damage' ? '進化3で解放' : undefined}
                   atCap={level >= cap}
+                  runnerPt={state.runnerPt}
                   onUpgrade={() => {
                     upgradeStat(character.defId, stat);
                     setBurstTrigger((v) => v + 1);
@@ -364,7 +365,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                 />
               );
             })}
-            <View style={[styles.statCardSlot]}>
+            <View style={styles.statCardSlot}>
               <ShoeCard
                 shoeUnlocked={character.shoeUnlocked}
                 shoeLevel={character.shoeLevel}
@@ -577,7 +578,7 @@ const styles = StyleSheet.create({
   walletLabel: { fontSize: 12, color: colors.subtext },
   walletValue: { fontSize: 18, fontWeight: '800', color: colors.text },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 10 },
-  statCardSlot: { flexBasis: '30%' },
+  statCardSlot: { flexGrow: 1, flexBasis: '28%', flexDirection: 'row' },
   levelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   levelChip: {
     backgroundColor: colors.cardInset,

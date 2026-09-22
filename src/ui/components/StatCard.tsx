@@ -8,19 +8,24 @@ interface Props {
   locked: boolean;
   lockedHint?: string;
   atCap: boolean;
+  /** 所持ランナーpt。足りないときはボタンを暗くして押せなくする(試作版と同じ挙動)。 */
+  runnerPt: number;
   onUpgrade: () => void;
 }
 
-export function StatCard({ statKey, level, cost, locked, lockedHint, atCap, onUpgrade }: Props) {
+export function StatCard({ statKey, level, cost, locked, lockedHint, atCap, runnerPt, onUpgrade }: Props) {
   const color = STAT_COLORS[statKey] ?? colors.primary;
-  const disabled = locked || atCap || cost === null;
+  const affordable = cost !== null && runnerPt >= cost;
+  const disabled = locked || atCap || !affordable;
+
+  const buttonLabel = locked ? lockedHint ?? 'ロック中' : atCap ? '上限' : `${cost?.toLocaleString()}pt`;
 
   return (
     <TrainingCard
       color={color}
-      title={`${locked ? '🔒 ' : ''}${STAT_LABELS[statKey] ?? statKey}`}
-      subtitle={locked ? lockedHint ?? 'ロック中' : `Lv. ${level.toFixed(1)}`}
-      buttonLabel={locked ? 'ロック中' : atCap ? '上限' : `${cost}pt`}
+      label={STAT_LABELS[statKey] ?? statKey}
+      value={locked ? '🔒' : `Lv.${level.toFixed(1)}`}
+      buttonLabel={buttonLabel}
       disabled={disabled}
       locked={locked}
       onPress={onUpgrade}

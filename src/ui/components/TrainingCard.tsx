@@ -4,23 +4,28 @@ import { useHoldRepeat } from '../hooks/useHoldRepeat';
 import { colors } from '../theme';
 
 interface Props {
+  /** ステータス色。ボタンの背景とLv.表示の文字色に使う。 */
   color: string;
-  title: string;
-  subtitle: string;
+  /** 上段の見出し(スピード / シューズ など)。 */
+  label: string;
+  /** 中段の大きい表示(Lv.11.0 / 🔒 / 未解放)。 */
+  value: string;
+  /** 中段の文字色。省略時はcolorを使う。 */
+  valueColor?: string;
+  /** 下段のボタン内の文字(789pt / 進化2で解放 など)。 */
   buttonLabel: string;
   disabled: boolean;
   /**
-   * ロック中かどうか(atCap/資金不足などの一時的なdisabledとは区別する)。
-   * 仕様書3章: 「ロック中は上のLv.表示とボタン両方を暗くする」— 片方だけだと中途半端に見えるため。
+   * ロック中かどうか(ptが足りないだけの一時的なdisabledとは区別する)。
+   * ロック中は中段・ボタンの両方を暗くする(片方だけだと中途半端に見えるため)。
    */
   locked?: boolean;
   onPress: () => void;
 }
 
 // タップ操作でのブラウザ/iOS標準の挙動(テキスト選択・長押しの拡大鏡・コールアウトメニュー)を
-// 止める。touchActionが無いと、子のuserSelect/WebkitTouchCalloutだけでは
-// タッチイベントを受け取る要素(buttonTouchArea)自体の長押し判定を止めきれない。
-// RNのスタイル型には無いプロパティなのでキャストする(RN Webでのみ有効、ネイティブでは無視される)。
+// 止める。touchActionが無いと、子のuserSelectだけではタッチイベントを受け取る要素自体の
+// 長押し判定を止めきれない。RNのスタイル型には無いプロパティなのでキャストする。
 const noTextSelect = {
   userSelect: 'none',
   WebkitUserSelect: 'none',
@@ -28,134 +33,135 @@ const noTextSelect = {
   touchAction: 'none',
 } as unknown as StyleProp<ViewStyle>;
 
-const SQUISH_MS = 160;
-const POP_MS = 600;
+/**
+ * ボタン内の文字サイズ。「789pt」のような短い表示は大きく、「1,000Vicで解放」のような
+ * 長い表示は収まるところまで小さくする(RN Webでは adjustsFontSizeToFit が効かないため自前で)。
+ */
+function buttonFontSize(text: string): number {
+  const widthInEm = [...text].reduce((sum, ch) => sum + (/[ -~]/.test(ch) ? 0.55 : 1), 0);
+  // 3列グリッドで一番狭くなるとき(主画面)のボタン内幅に合わせている。
+  const availablePx = 72;
+  return Math.max(10, Math.min(16, Math.floor(availablePx / widthInEm)));
+}
 
-interface PopToken {
-  id: number;
+/** 背景色に対して読みやすい文字色を選ぶ(黄色系のボタンに白文字だと読めないため)。 */
+function readableTextOn(background: string): string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(background)) return '#ffffff';
+  const r = parseInt(background.slice(1, 3), 16);
+  const g = parseInt(background.slice(3, 5), 16);
+  const b = parseInt(background.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.62 ? '#2a1c4a' : '#ffffff';
 }
 
 /** トレーニングカードの3列グリッドに並ぶカードの共通シェル(StatCard/ShoeCardで共用)。 */
-export function TrainingCard({ color, title, subtitle, buttonLabel, disabled, locked = disabled, onPress }: Props) {
+export function TrainingCard({
+  color,
+  label,
+  value,
+  valueColor,
+  buttonLabel,
+  disabled,
+  locked = false,
+  onPress,
+}: Props) {
   const [scale] = useState(() => new Animated.Value(1));
-  const [pops, setPops] = useState<PopToken[]>([]);
-  const popIdRef = useRef(0);
+  const [valuePop] = useState(() => new Animated.Value(0));
 
-  const fire = () => {
-    // squish: scale(1) → scale(0.86)(45%地点) → scale(1)、0.16秒
-    scale.stopAnimation();
+  // 押している間はへこませたまま、離したときにプニッと戻す。
+  // 連打のたびに縮め直すと小刻みに震えるだけになり、しかも指の下に隠れて見えないので、
+  // 「効いている」ことは指で隠れない中段のLv.表示側で見せる(下のvaluePop)。
+  const setPressed = (pressed: boolean) => {
+    Animated.spring(scale, {
+      toValue: pressed ? 0.94 : 1,
+      useNativeDriver: true,
+      speed: pressed ? 40 : 12,
+      bounciness: pressed ? 0 : 16,
+    }).start();
+  };
+
+  // 値が実際に変わったときだけ、中段の表示をポンと跳ねさせる。
+  // (ptが足りず上がらなかったときは何も起きない = 上がっていないことが伝わる)
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    if (prevValueRef.current === value) return;
+    prevValueRef.current = value;
+    valuePop.setValue(0);
     Animated.sequence([
-      Animated.timing(scale, {
-        toValue: 0.86,
-        duration: Math.round(SQUISH_MS * 0.45),
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
+      Animated.timing(valuePop, {
         toValue: 1,
-        duration: Math.round(SQUISH_MS * 0.55),
-        easing: Easing.ease,
+        duration: 90,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
+      Animated.spring(valuePop, { toValue: 0, useNativeDriver: true, speed: 18, bounciness: 14 }),
     ]).start();
+  }, [value, valuePop]);
 
-    const id = popIdRef.current++;
-    setPops((prev) => [...prev, { id }]);
-    onPress();
-  };
+  const panHandlers = useHoldRepeat({ onFire: onPress, disabled, onPressStateChange: setPressed });
 
-  const removePop = (id: number) => {
-    setPops((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const panHandlers = useHoldRepeat({ onFire: fire, disabled });
+  const buttonColor = disabled ? colors.locked : color;
+  const valueScale = valuePop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.22] });
 
   return (
     <View style={[styles.card, noTextSelect]}>
-      <Text style={[styles.name, { color }]} numberOfLines={2}>
-        {title}
+      <Text style={[styles.label, locked && styles.labelLocked]} numberOfLines={1}>
+        {label}
       </Text>
-      <Text style={[styles.level, locked && styles.levelDisabled]} numberOfLines={1}>
-        {subtitle}
-      </Text>
+      <Animated.Text
+        style={[
+          styles.value,
+          { color: locked ? colors.lockedText : valueColor ?? color, transform: [{ scale: valueScale }] },
+        ]}
+        numberOfLines={1}
+      >
+        {value}
+      </Animated.Text>
       <View style={[styles.buttonTouchArea, noTextSelect]} {...(disabled ? {} : panHandlers)}>
         <Animated.View
-          style={[
-            styles.button,
-            noTextSelect,
-            { backgroundColor: disabled ? colors.locked : color, transform: [{ scale }] },
-          ]}
+          style={[styles.button, noTextSelect, { backgroundColor: buttonColor, transform: [{ scale }] }]}
         >
-          <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]} numberOfLines={1}>
+          <Text
+            style={[
+              styles.buttonText,
+              {
+                color: disabled ? colors.lockedText : readableTextOn(buttonColor),
+                fontSize: buttonFontSize(buttonLabel),
+              },
+            ]}
+            numberOfLines={1}
+          >
             {buttonLabel}
           </Text>
         </Animated.View>
-      </View>
-      <View style={styles.popLayer} pointerEvents="none">
-        {pops.map((p) => (
-          <PopText key={p.id} onDone={() => removePop(p.id)} />
-        ))}
       </View>
     </View>
   );
 }
 
-/** ボタン右上からふわっと浮かんで消える「+0.1」のポップテキスト。 */
-function PopText({ onDone }: { onDone: () => void }) {
-  const [anim] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    const animation = Animated.timing(anim, {
-      toValue: 1,
-      duration: POP_MS,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    });
-    animation.start(({ finished }) => {
-      if (finished) onDone();
-    });
-    return () => animation.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -16] });
-  const opacity = anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] });
-
-  return (
-    <Animated.Text style={[styles.pop, { opacity, transform: [{ translateY }] }]} pointerEvents="none">
-      +0.1
-    </Animated.Text>
-  );
-}
-
 const styles = StyleSheet.create({
   card: {
-    flexBasis: '30%',
+    flexGrow: 1,
+    flexBasis: '28%',
     borderRadius: 14,
-    padding: 10,
+    paddingHorizontal: 8,
+    paddingTop: 10,
+    paddingBottom: 8,
     alignItems: 'center',
     gap: 6,
     backgroundColor: colors.cardInset,
   },
-  name: { fontWeight: '700', fontSize: 12, textAlign: 'center' },
-  level: { fontSize: 13, color: colors.text },
-  levelDisabled: { color: colors.lockedText },
+  label: { fontSize: 12, color: colors.subtext, fontWeight: '600' },
+  labelLocked: { color: colors.lockedText },
+  value: { fontSize: 19, fontWeight: '800' },
   buttonTouchArea: { width: '100%' },
-  button: { borderRadius: 10, paddingVertical: 9, paddingHorizontal: 6, width: '100%' },
-  buttonText: { color: colors.text, fontWeight: '800', fontSize: 12, textAlign: 'center' },
-  buttonTextDisabled: { color: colors.lockedText },
-  // カード全体の右上に独立したレイヤーとして浮かせる(ボタンの子にすると、真上のLv.表示と
-  // 重なって表示されてしまうため)。
-  popLayer: {
-    position: 'absolute',
-    top: -6,
-    right: 2,
-    zIndex: 10,
-    elevation: 10,
+  button: {
+    borderRadius: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 6,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pop: {
-    color: colors.gold,
-    fontSize: 11,
-    fontWeight: '800',
-  },
+  buttonText: { fontWeight: '800', textAlign: 'center' },
 });

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { GestureResponderEvent, PanResponder } from 'react-native';
 
 interface Options {
@@ -42,6 +42,13 @@ export function useHoldRepeat({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startXYRef = useRef({ x: 0, y: 0 });
 
+  // 連打中にptが尽きてdisabledになったら、その場で連打を止めるためのもの。
+  // 走り出したsetIntervalのコールバックは開始時のdisabledを掴んだままなので、refで最新を見る。
+  const disabledRef = useRef(disabled);
+  useEffect(() => {
+    disabledRef.current = disabled;
+  });
+
   const clear = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -62,7 +69,13 @@ export function useHoldRepeat({
       clear();
       onFire();
       timeoutRef.current = setTimeout(() => {
-        intervalRef.current = setInterval(onFire, repeatIntervalMs);
+        intervalRef.current = setInterval(() => {
+          if (disabledRef.current) {
+            clear();
+            return;
+          }
+          onFire();
+        }, repeatIntervalMs);
       }, initialDelayMs);
     },
     onPanResponderMove: (evt: GestureResponderEvent) => {

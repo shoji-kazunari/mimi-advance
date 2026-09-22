@@ -1,6 +1,5 @@
 import { shoeCostFor, SHOE_UNLOCK_COST } from '../../domain/shoes';
-import { shoeMultiplier } from '../../domain/stats';
-import { STAT_COLORS } from '../theme';
+import { colors, STAT_COLORS } from '../theme';
 import { TrainingCard } from './TrainingCard';
 
 interface Props {
@@ -15,30 +14,27 @@ export function ShoeCard({ shoeUnlocked, shoeLevel, vicMoney, onUnlock, onUpgrad
   const color = STAT_COLORS.shoe;
 
   if (!shoeUnlocked) {
-    const affordable = vicMoney >= SHOE_UNLOCK_COST;
     return (
       <TrainingCard
         color={color}
-        title="🔒 シューズ"
-        subtitle={`${SHOE_UNLOCK_COST} Vicで解放`}
-        buttonLabel="解放する"
-        disabled={!affordable}
-        locked
+        label="シューズ"
+        value="未解放"
+        valueColor={colors.gold}
+        buttonLabel={`${SHOE_UNLOCK_COST.toLocaleString()}Vicで解放`}
+        disabled={vicMoney < SHOE_UNLOCK_COST}
         onPress={onUnlock}
       />
     );
   }
 
-  const multiplier = shoeMultiplier(shoeLevel, shoeUnlocked);
   const cost = shoeCostFor(shoeLevel);
-  const affordable = vicMoney >= cost;
   return (
     <TrainingCard
       color={color}
-      title="シューズ"
-      subtitle={`Lv. ${shoeLevel.toFixed(1)} (×${multiplier.toFixed(2)})`}
-      buttonLabel={`${cost} Vic`}
-      disabled={!affordable}
+      label="シューズ"
+      value={`Lv.${shoeLevel.toFixed(1)}`}
+      buttonLabel={`${cost.toLocaleString()}Vic`}
+      disabled={vicMoney < cost}
       onPress={onUpgrade}
     />
   );
