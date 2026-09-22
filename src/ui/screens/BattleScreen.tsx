@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CombatantProfile } from '../../domain/battle';
+import { CombatantProfile, staminaAtTime } from '../../domain/battle';
 import { BlackFade } from '../components/BlackFade';
 import { GaugeBar } from '../components/GaugeBar';
-import { TrackScene } from '../components/track/TrackScene';
+import { opponentLeftPercentForRatios, TrackScene } from '../components/track/TrackScene';
 import { TrackToastLayer } from '../components/track/TrackToastLayer';
 import { useBattlePlayback } from '../hooks/useBattlePlayback';
 import { useShake } from '../hooks/useShake';
@@ -67,6 +67,19 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
     []
   );
 
+  // 各障害物イベント時刻に、ボスが実際に居るはずの位置を事前計算する(仕様書5章、ボスは
+  // スタミナに応じて動くため)。TrackScene側の障害物出現タイミング・ジャンプ同期に使う。
+  const opponentLeftPercentAtJump = useMemo(
+    () =>
+      timeline.obstacleTimesMs.map((t) => {
+        const f = staminaAtTime(timeline, t);
+        const meR = f.meStamina / timeline.meMaxStamina;
+        const opponentR = f.opponentStamina / timeline.opponentMaxStamina;
+        return opponentLeftPercentForRatios(meR, opponentR);
+      }),
+    [timeline]
+  );
+
   const resultTimerStarted = useRef(false);
 
   // onFinishedは親の再レンダーのたびに新しい関数参照になり得るため、常に最新の値をrefで持つ
@@ -113,6 +126,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
           opponentLabel={opponentName}
           elapsedMs={elapsed}
           jumpTimesMs={timeline.obstacleTimesMs}
+          opponentLeftPercentAtJump={opponentLeftPercentAtJump}
           meRatio={frame.meStamina / timeline.meMaxStamina}
           opponentRatio={frame.opponentStamina / timeline.opponentMaxStamina}
         />

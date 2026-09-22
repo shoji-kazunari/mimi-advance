@@ -4,7 +4,7 @@ import { useObstacleJump } from '../../hooks/useObstacleJump';
 import { RunnerAvatar } from '../RunnerAvatar';
 import { OpponentEntity } from './OpponentEntity';
 import { TrackBackground } from './TrackBackground';
-import { OBSTACLE_END_PERCENT, OBSTACLE_START_PERCENT, OBSTACLE_TRAVEL_MS, TrackObstacle } from './TrackObstacle';
+import { obstacleTravelMsTo, TrackObstacle } from './TrackObstacle';
 import { Zako } from './Zako';
 
 /** すれ違うザコの名前(見た目だけの演出用、ゲーム性には影響しない)。 */
@@ -36,6 +36,13 @@ interface BattleProps {
   /** timeline.obstacleTimesMs。障害物がボスの位置を通過する時刻として使う
    *  (自キャラは同じ障害物がさらに奥まで進んでから届くよう、下でずらして使う)。 */
   jumpTimesMs: number[];
+  /**
+   * jumpTimesMsの各時刻に、ボスが実際に居るはずの左位置(%)。呼び出し側が
+   * staminaAtTime + opponentLeftPercentForRatiosで事前計算する。ボスは仕様書5章により
+   * スタミナに応じて動くため、固定位置(旧OPPONENT_LEFT_PERCENT)を前提にした障害物の
+   * 出現タイミングでは、ボスが動いた分だけジャンプがずれてしまうため必要。
+   */
+  opponentLeftPercentAtJump: number[];
   /** frame.meStamina / timeline.meMaxStamina。ボスの詰め寄り具合(仕様書5章)の判定に使う。 */
   meRatio: number;
   /** frame.opponentStamina / timeline.opponentMaxStamina。ボスの横位置はこの残量で自キャラに詰め寄る。 */
@@ -55,15 +62,26 @@ const OPPONENT_LEFT_PERCENT = 78;
 const OPPONENT_ADJACENT_PERCENT = RUNNER_LEFT_PERCENT + 10;
 const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
+const EMPTY_PERCENTS: number[] = [];
 
-// 障害物は右(OBSTACLE_START_PERCENT)から左(OBSTACLE_END_PERCENT)へ一定速度で
-// トラック全体を横切る(ザコと同じ動き)。ボスの位置(78%)を先に通り、
-// そのあと自キャラの位置(12%)を通る。domain側のobstacleTimesMsは「ボスの位置を
-// 通過する時刻」として扱い、自キャラのジャンプだけその分だけ遅らせて同期させる。
-const OBSTACLE_SPAN = OBSTACLE_START_PERCENT - OBSTACLE_END_PERCENT;
-const MS_TO_OPPONENT = ((OBSTACLE_START_PERCENT - OPPONENT_LEFT_PERCENT) / OBSTACLE_SPAN) * OBSTACLE_TRAVEL_MS;
-const MS_TO_RUNNER = ((OBSTACLE_START_PERCENT - RUNNER_LEFT_PERCENT) / OBSTACLE_SPAN) * OBSTACLE_TRAVEL_MS;
-const RUNNER_JUMP_DELAY_MS = MS_TO_RUNNER - MS_TO_OPPONENT;
+// 障害物は右から左へトラック全体を横切る(ザコと同じ動き)。ボスの位置を先に通り、
+// そのあと自キャラの位置(12%)を通る。自キャラの位置は動かないのでMS_TO_RUNNERは定数。
+const MS_TO_RUNNER = obstacleTravelMsTo(RUNNER_LEFT_PERCENT);
+
+/**
+ * 仕様書5章「ボスの横位置はボス自身の残スタミナ比率で自キャラに詰め寄る
+ * (スタミナ0で完全に隣接)。自分が劣勢な時だけ遠のく」の実装。
+ * 線形(1-opponentRatio)のままだと、スタミナがまだ半分以上残っている段階から
+ * 見た目上どんどん詰め寄ってしまい「抜き去るタイミングが早すぎる」ため、
+ * 3乗のイーズインをかけて、本当にスタミナが尽きる直前までは大きく動かず、
+ * 終盤だけ一気に詰め寄る(=完全に隣接するのはスタミナがほぼ0の瞬間)ようにする。
+ */
+export function opponentLeftPercentForRatios(meRatio: number, opponentRatio: number): number {
+  const disadvantage = Math.max(0, opponentRatio - meRatio);
+  const approachBase = Math.min(1, Math.max(0, 1 - opponentRatio - disadvantage));
+  const approachRatio = approachBase ** 3;
+  return OPPONENT_LEFT_PERCENT - (OPPONENT_LEFT_PERCENT - OPPONENT_ADJACENT_PERCENT) * approachRatio;
+}
 
 /**
  * 「耳アド UI手触り仕様書」0章: 走行シーン(トラック)の実体。アイドル時(ザコ追い抜きループ)と
@@ -76,12 +94,21 @@ export function TrackScene(props: Props) {
   const bossReady = props.mode === 'idle' ? props.bossReady : false;
   const battleElapsed = props.mode === 'battle' ? props.elapsedMs : 0;
   const opponentJumpTimes = props.mode === 'battle' ? props.jumpTimesMs : EMPTY_JUMPS;
+  const opponentLeftPercentAtJump =
+    props.mode === 'battle' ? props.opponentLeftPercentAtJump : EMPTY_PERCENTS;
   const burstTrigger = props.burstTrigger ?? 0;
   const exitSide = props.mode === 'battle' ? props.exitSide ?? null : null;
   const opponentJumpTimesKey = opponentJumpTimes.join(',');
-  // 自キャラは同じ障害物がさらに奥まで進んでから届くので、その分だけジャンプを遅らせる。
+  // 障害物がボスの位置(呼び出し側で事前計算した、その時刻に実際にボスが居るはずの位置)に
+  // 届くまでの所要時間。自キャラは同じ障害物がさらに奥まで進んでから届くので、
+  // その差分だけジャンプを遅らせる。
+  const msToOpponentAtJump = opponentJumpTimes.map((_, i) =>
+    obstacleTravelMsTo(opponentLeftPercentAtJump[i] ?? RUNNER_LEFT_PERCENT)
+  );
   const runnerJumpTimes =
-    props.mode === 'battle' ? opponentJumpTimes.map((t) => t + RUNNER_JUMP_DELAY_MS) : EMPTY_JUMPS;
+    props.mode === 'battle'
+      ? opponentJumpTimes.map((t, i) => t + (MS_TO_RUNNER - msToOpponentAtJump[i]))
+      : EMPTY_JUMPS;
 
   const [zakoList, setZakoList] = useState<{ id: number; name: string; color: string }[]>([]);
 
@@ -107,8 +134,8 @@ export function TrackScene(props: Props) {
   const opponentJump = useObstacleJump(battleElapsed, opponentJumpTimes);
 
   // 障害物本体(見た目)。ボスの位置に届く時刻(=jumpTimesMsの各要素)より
-  // MS_TO_OPPONENT分だけ早く画面右から出発させることで、ちょうどそのタイミングで
-  // ボスの位置(78%)を通過するようにする(そのまま自キャラの位置も後から通過する)。
+  // msToOpponentAtJump分だけ早く画面右から出発させることで、ちょうどそのタイミングで
+  // ボスの(その時点での)位置を通過するようにする(そのまま自キャラの位置も後から通過する)。
   const [obstacleList, setObstacleList] = useState<{ id: number }[]>([]);
   const obstacleIdxRef = useRef(0);
   useEffect(() => {
@@ -118,12 +145,12 @@ export function TrackScene(props: Props) {
     if (props.mode !== 'battle') return;
     while (
       obstacleIdxRef.current < opponentJumpTimes.length &&
-      opponentJumpTimes[obstacleIdxRef.current] - MS_TO_OPPONENT <= battleElapsed
+      opponentJumpTimes[obstacleIdxRef.current] - msToOpponentAtJump[obstacleIdxRef.current] <= battleElapsed
     ) {
       obstacleIdxRef.current += 1;
       setObstacleList((prev) => [...prev, { id: obstacleIdSeq++ }]);
     }
-  }, [props.mode, battleElapsed, opponentJumpTimesKey, opponentJumpTimes]);
+  }, [props.mode, battleElapsed, opponentJumpTimesKey, opponentJumpTimes, msToOpponentAtJump]);
   const wasObstaclePausedRef = useRef(paused);
   useEffect(() => {
     if (paused && !wasObstaclePausedRef.current) setObstacleList([]);
@@ -149,16 +176,10 @@ export function TrackScene(props: Props) {
     outputRange: [`${RUNNER_LEFT_PERCENT}%`, '140%'],
   });
 
-  // 仕様書5章: 「ボスの横位置はボス自身の残スタミナ比率で自キャラに詰め寄る
-  // (スタミナ0で完全に隣接)。自分が劣勢な時だけ遠のく」。
-  // ボス自身の消耗(1-opponentRatio)を詰め寄り量の基本にしつつ、自分がボスより
-  // 相対的に劣勢な分(opponentRatio - meRatio)だけ詰め寄りを弱めて遠のかせる。
+  // 仕様書5章: ボスの横位置はスタミナ比率に応じて自キャラに詰め寄る(opponentLeftPercentForRatios参照)。
   const opponentRatio = props.mode === 'battle' ? props.opponentRatio : 1;
   const meRatio = props.mode === 'battle' ? props.meRatio : 1;
-  const disadvantage = Math.max(0, opponentRatio - meRatio);
-  const approachRatio = Math.min(1, Math.max(0, 1 - opponentRatio - disadvantage));
-  const opponentSettleLeft =
-    OPPONENT_LEFT_PERCENT - (OPPONENT_LEFT_PERCENT - OPPONENT_ADJACENT_PERCENT) * approachRatio;
+  const opponentSettleLeft = opponentLeftPercentForRatios(meRatio, opponentRatio);
 
   return (
     <View style={styles.scene}>

@@ -14,6 +14,12 @@ export const OBSTACLE_START_PERCENT = 100;
 export const OBSTACLE_END_PERCENT = -15;
 export const OBSTACLE_TRAVEL_MS = 1600;
 
+/** 障害物が画面右端(OBSTACLE_START_PERCENT)から指定の左位置(%)へ到達するまでの所要時間。 */
+export function obstacleTravelMsTo(leftPercent: number): number {
+  const span = OBSTACLE_START_PERCENT - OBSTACLE_END_PERCENT;
+  return ((OBSTACLE_START_PERCENT - leftPercent) / span) * OBSTACLE_TRAVEL_MS;
+}
+
 /** バトル中、ジャンプの理由になる障害物本体。右から出て左へ抜けていく。 */
 export function TrackObstacle({ onExit }: Props) {
   const [anim] = useState(() => new Animated.Value(0));
