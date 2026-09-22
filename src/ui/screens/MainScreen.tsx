@@ -348,15 +348,17 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
         </Animated.View>
 
         <View style={styles.trainingCard}>
-          <Text style={styles.trainingTitle}>トレーニング</Text>
-          <View style={styles.walletRow}>
-            <View style={styles.walletChip}>
-              <Text style={styles.walletLabel}>ランナーpt</Text>
-              <Text style={styles.walletValue}>{Math.floor(state.runnerPt)}</Text>
-            </View>
-            <View style={styles.walletChip}>
-              <Text style={styles.walletLabel}>Vicマネー</Text>
-              <Text style={styles.walletValue}>{Math.floor(state.vicMoney)}</Text>
+          <View style={styles.trainingHeaderRow}>
+            <Text style={styles.trainingTitle}>トレーニング</Text>
+            <View style={styles.walletRow}>
+              <View style={styles.walletChip}>
+                <Text style={styles.walletLabel}>ランナーpt</Text>
+                <Text style={styles.walletValue}>{Math.floor(state.runnerPt).toLocaleString()}</Text>
+              </View>
+              <View style={styles.walletChip}>
+                <Text style={styles.walletLabel}>Vicマネー</Text>
+                <Text style={styles.walletValue}>{Math.floor(state.vicMoney).toLocaleString()}</Text>
+              </View>
             </View>
           </View>
 
@@ -572,11 +574,18 @@ const styles = StyleSheet.create({
   },
   bossPanelWrap: {},
   trainingCard: { backgroundColor: colors.card, borderRadius: 20, padding: 14, gap: 12 },
+  trainingHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   trainingTitle: { color: colors.text, fontWeight: '700', fontSize: 15 },
-  walletRow: { flexDirection: 'row', gap: 10 },
-  walletChip: { flex: 1, backgroundColor: colors.cardInset, borderRadius: 12, padding: 10, alignItems: 'center' },
-  walletLabel: { fontSize: 12, color: colors.subtext },
-  walletValue: { fontSize: 18, fontWeight: '800', color: colors.text },
+  walletRow: { flexDirection: 'row', gap: 8 },
+  walletChip: {
+    backgroundColor: colors.cardInset,
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  walletLabel: { fontSize: 10, color: colors.subtext },
+  walletValue: { fontSize: 14, fontWeight: '800', color: colors.text },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 10 },
   statCardSlot: { flexGrow: 1, flexBasis: '28%', flexDirection: 'row' },
   levelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
