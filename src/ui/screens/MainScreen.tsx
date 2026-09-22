@@ -64,6 +64,10 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const setUsername = useGameStore((s) => s.setUsername);
   const resolveBossBattle = useGameStore((s) => s.resolveBossBattle);
   const refreshVsRaceReset = useGameStore((s) => s.refreshVsRaceReset);
+  const debugAdvanceStage = useGameStore((s) => s.debugAdvanceStage);
+  const debugMaxUnlockedStats = useGameStore((s) => s.debugMaxUnlockedStats);
+  const debugAddRunnerPt = useGameStore((s) => s.debugAddRunnerPt);
+  const debugAddVicMoney = useGameStore((s) => s.debugAddVicMoney);
   const { showPopup, showToast } = useNotifications();
   const character = useActiveCharacter();
 
@@ -207,6 +211,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const [helpVisible, setHelpVisible] = useState(false);
   const [saveCodeVisible, setSaveCodeVisible] = useState(false);
   const [rankingVisible, setRankingVisible] = useState(false);
+  const [debugVisible, setDebugVisible] = useState(false);
 
   const [popups, setPopups] = useState<{ id: number; text: string }[]>([]);
   const nextPopupId = useRef(0);
@@ -277,6 +282,9 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
             </Pressable>
             <Pressable style={styles.circleButton} onPress={() => setHelpVisible(true)}>
               <Text>❓</Text>
+            </Pressable>
+            <Pressable style={styles.circleButton} onPress={() => setDebugVisible(true)}>
+              <Text>🐞</Text>
             </Pressable>
           </View>
         </View>
@@ -534,6 +542,53 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               </ScrollView>
               <Pressable style={styles.modalSave} onPress={() => setRankingVisible(false)}>
                 <Text style={styles.modalSaveText}>閉じる</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={debugVisible} transparent animationType="fade">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>🐞 デバッグ</Text>
+              <Pressable
+                style={styles.modalSave}
+                onPress={() => {
+                  debugAdvanceStage();
+                  showToast('ステージを10進めました');
+                }}
+              >
+                <Text style={styles.modalSaveText}>ステージを10進める</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSave}
+                onPress={() => {
+                  debugMaxUnlockedStats();
+                  showToast('解放中のステータスを全て+10しました');
+                }}
+              >
+                <Text style={styles.modalSaveText}>解放中ステータスを全て+10</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSave}
+                onPress={() => {
+                  debugAddRunnerPt();
+                  showToast('ランナーpt+500');
+                }}
+              >
+                <Text style={styles.modalSaveText}>ランナーpt +500</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSave}
+                onPress={() => {
+                  debugAddVicMoney();
+                  showToast('Vicマネー+500');
+                }}
+              >
+                <Text style={styles.modalSaveText}>Vicマネー +500</Text>
+              </Pressable>
+              <Pressable style={styles.modalCancel} onPress={() => setDebugVisible(false)}>
+                <Text style={styles.modalCancelText}>閉じる</Text>
               </Pressable>
             </View>
           </View>

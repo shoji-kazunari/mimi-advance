@@ -10,7 +10,7 @@ import {
   bossRunnerPtReward,
   bossVicMoneyReward,
 } from '../domain/stage';
-import { baseStats, GameState, OwnedCharacter, StatKey } from '../domain/types';
+import { baseStats, GameState, OwnedCharacter, StatKey, STAT_KEYS } from '../domain/types';
 import { resetVsRaceIfNewDay, VS_RACE_DAILY_LIMIT } from '../domain/vsRace';
 
 const STORAGE_KEY = 'mimi-advance/save';
@@ -58,6 +58,15 @@ interface GameStore {
   resolveVsRace: (vicGained: number, won: boolean) => void;
   loadState: (state: GameState) => void;
   refreshVsRaceReset: () => void;
+
+  /** デバッグ機能。操作中のキャラのステージを10進める(追い抜きカウントはリセット)。 */
+  debugAdvanceStage: () => void;
+  /** デバッグ機能。操作中のキャラの、解放済みステータスをすべて+10する(上限あり)。 */
+  debugMaxUnlockedStats: () => void;
+  /** デバッグ機能。ランナーptを500追加する。 */
+  debugAddRunnerPt: () => void;
+  /** デバッグ機能。Vicマネーを500追加する。 */
+  debugAddVicMoney: () => void;
 }
 
 function activeCharacter(state: GameState): OwnedCharacter {
@@ -280,5 +289,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const next = resetVsRaceIfNewDay(current);
     if (next === current) return; // 日付が変わっていなければ何もしない(無駄な保存を避ける)
     get().setState((state) => ({ ...state, vsRace: next }));
+  },
+
+  debugAdvanceStage: () => {
+    get().setState((state) => {
+      const character = activeCharacter(state);
+      return updateCharacter(state, character.defId, (c) => ({
+        ...c,
+        stage: c.stage + 10,
+        zakoDefeated: 0,
+      }));
+    });
+  },
+
+  debugMaxUnlockedStats: () => {
+    get().setState((state) => {
+      const character = activeCharacter(state);
+      const cap = statLevelCap(character.evolutionStage);
+      return updateCharacter(state, character.defId, (c) => ({
+        ...c,
+        stats: STAT_KEYS.reduce(
+          (stats, stat) =>
+            isStatUnlocked(stat, c.evolutionStage)
+              ? { ...stats, [stat]: Math.min(cap, Math.round((stats[stat] + 10) * 10) / 10) }
+              : stats,
+          c.stats
+        ),
+      }));
+    });
+  },
+
+  debugAddRunnerPt: () => {
+    get().setState((state) => ({ ...state, runnerPt: state.runnerPt + 500 }));
+  },
+
+  debugAddVicMoney: () => {
+    get().setState((state) => ({ ...state, vicMoney: state.vicMoney + 500 }));
   },
 }));
