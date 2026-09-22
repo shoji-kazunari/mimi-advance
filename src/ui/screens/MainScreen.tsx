@@ -307,19 +307,17 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
 
           {postBattle?.kind === 'wiping' && (
             <BlackFade
-              onDone={() => {
-                setPostBattle(null);
-                setInBossBattle(false);
-              }}
+              exitAfterCovered
+              onCovered={() => setInBossBattle(false)}
+              onDone={() => setPostBattle(null)}
             />
           )}
 
           {enteringBattle && (
             <BlackFade
-              onDone={() => {
-                setEnteringBattle(false);
-                setInBossBattle(true);
-              }}
+              exitAfterCovered
+              onCovered={() => setInBossBattle(true)}
+              onDone={() => setEnteringBattle(false)}
             />
           )}
         </Animated.View>
@@ -560,16 +558,17 @@ const styles = StyleSheet.create({
   linkButtonText: { color: colors.text, fontWeight: '600', fontSize: 12 },
   stageRow: { color: colors.subtext },
   track: {
-    height: 150,
+    height: 220,
     backgroundColor: colors.card,
     borderRadius: 20,
     overflow: 'hidden',
   },
   // 自キャラの頭上に小さく浮かぶポップテキスト用のレイヤー。RunnerAvatarの位置
-  // (TrackScene内、left:12%・top:22%)に合わせて、その少し上に配置する。
+  // (TrackScene内、left:12%・top:50%)のすぐ上に置く(浮動距離が短い間隔しかないと
+  // トラック上端まで飛んでいるように見えてしまうため、頭のすぐ上に余裕を持たせる)。
   popupLayer: {
     position: 'absolute',
-    top: '4%',
+    top: '38%',
     left: '12%',
     marginLeft: -20,
     width: 40,

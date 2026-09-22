@@ -158,7 +158,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background, padding: 20, gap: 16, justifyContent: 'center' },
   title: { fontSize: 20, fontWeight: '800', color: colors.text, textAlign: 'center' },
-  trackBox: { height: 150, backgroundColor: colors.card, borderRadius: 20, overflow: 'hidden' },
+  trackBox: { height: 220, backgroundColor: colors.card, borderRadius: 20, overflow: 'hidden' },
   combatantBlock: { gap: 8 },
   name: { fontSize: 15, fontWeight: '700', color: colors.text },
   staminaText: { color: colors.subtext, textAlign: 'right' },
