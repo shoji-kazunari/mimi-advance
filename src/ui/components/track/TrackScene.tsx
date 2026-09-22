@@ -146,22 +146,22 @@ export function TrackScene(props: Props) {
   return (
     <View style={styles.scene}>
       <TrackBackground />
+      {/* ザコはキャラ・ボスの後ろを通り抜けるように、両者より先に(=下のレイヤーに)描画する。 */}
+      {props.mode === 'idle' &&
+        zakoList.map((z) => (
+          <Zako
+            key={z.id}
+            name={z.name}
+            color={z.color}
+            onPass={props.onZakoPass}
+            onExit={() => setZakoList((prev) => prev.filter((x) => x.id !== z.id))}
+          />
+        ))}
       <Animated.View style={[styles.runnerWrap, { left: runnerLeft }]} pointerEvents="none">
         <RunnerAvatar burstTrigger={burstTrigger} jump={props.mode === 'battle' ? runnerJump : undefined} />
       </Animated.View>
       {props.mode === 'idle' ? (
-        <>
-          {bossReady && <OpponentEntity label="BOSS" slideIn />}
-          {zakoList.map((z) => (
-            <Zako
-              key={z.id}
-              name={z.name}
-              color={z.color}
-              onPass={props.onZakoPass}
-              onExit={() => setZakoList((prev) => prev.filter((x) => x.id !== z.id))}
-            />
-          ))}
-        </>
+        bossReady && <OpponentEntity label="BOSS" slideIn />
       ) : (
         <>
           <OpponentEntity
