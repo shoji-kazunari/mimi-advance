@@ -17,7 +17,7 @@ interface Props {
 const INTRO_MS = 2000;
 const RESULT_HOLD_MS = 2000;
 
-type Phase = 'intro' | 'battle' | 'result' | 'outro';
+type Phase = 'intro' | 'battle' | 'outro';
 
 /**
  * VSレース専用の全画面バトル演出。仕様書6章: 黒フェード→「VSレース スタート」2秒→
@@ -38,6 +38,11 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
     onFinishedRef.current = onFinished;
   });
 
+  // 'result'は独立したstateではなく、battle中に決着したかどうかから導く派生値。
+  // (以前はuseEffect内でsetPhase('result')していたが、それは「他のstateから導ける値を
+  // わざわざstateにコピーするだけの同期エフェクト」というアンチパターンだった)
+  const effectivePhase: Phase | 'result' = phase === 'battle' && finished ? 'result' : phase;
+
   useEffect(() => {
     if (phase !== 'intro') return;
     const timer = setTimeout(() => setPhase('battle'), INTRO_MS);
@@ -45,21 +50,17 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
   }, [phase]);
 
   useEffect(() => {
-    if (phase === 'battle' && finished) setPhase('result');
-  }, [phase, finished]);
-
-  useEffect(() => {
-    if (phase !== 'result' || resultTimerStarted.current) return;
+    if (effectivePhase !== 'result' || resultTimerStarted.current) return;
     resultTimerStarted.current = true;
     const timer = setTimeout(() => setPhase('outro'), RESULT_HOLD_MS);
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [effectivePhase]);
 
-  if (phase === 'intro') {
+  if (effectivePhase === 'intro') {
     return <BlackFade label="VSレース スタート" />;
   }
 
-  if (phase === 'outro') {
+  if (effectivePhase === 'outro') {
     return <BlackFade label={won ? 'WIN' : 'LOSE'} onDone={() => onFinishedRef.current(won)} />;
   }
 
@@ -83,7 +84,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
         </Text>
       </View>
 
-      {phase === 'battle' ? (
+      {effectivePhase === 'battle' ? (
         <Pressable style={styles.skipButton} onPress={skip}>
           <Text style={styles.skipButtonText}>スキップ</Text>
         </Pressable>

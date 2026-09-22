@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
 
 interface Props {
@@ -9,7 +9,8 @@ interface Props {
 
 /** 全画面を覆う黒フェード。仕様書5-6章の「黒フェードで通常表示に復帰」演出用。 */
 export function BlackFade({ label, durationMs = 400, onDone }: Props) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  // レンダー中にref.currentを読まない(react-hooks/refs)ため、useState の遅延初期化で持つ。
+  const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     const animation = Animated.timing(opacity, {
