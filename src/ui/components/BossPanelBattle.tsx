@@ -40,13 +40,13 @@ export function BossPanelBattle({ me, boss, onSettled }: Props) {
         <View style={styles.row}>
           <Text style={styles.label} numberOfLines={1}>自分</Text>
           <View style={styles.gaugeWrapper}>
-            <GaugeBar ratio={frame.meStamina / timeline.meMaxStamina} color={colors.primary} height={10} />
+            <GaugeBar ratio={frame.meStamina / timeline.meMaxStamina} color={colors.primary} height={10} animationMs={80} />
           </View>
         </View>
         <View style={styles.row}>
           <Text style={styles.label} numberOfLines={1}>ボス</Text>
           <View style={styles.gaugeWrapper}>
-            <GaugeBar ratio={frame.opponentStamina / timeline.opponentMaxStamina} color={colors.danger} height={10} />
+            <GaugeBar ratio={frame.opponentStamina / timeline.opponentMaxStamina} color={colors.danger} height={10} animationMs={80} />
           </View>
         </View>
       </View>

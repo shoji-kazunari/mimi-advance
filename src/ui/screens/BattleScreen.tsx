@@ -70,7 +70,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
 
       <View style={styles.combatantBlock}>
         <Text style={styles.name}>自分{sprinting ? ' ⚡全力疾走' : ''}</Text>
-        <GaugeBar ratio={frame.meStamina / timeline.meMaxStamina} color={colors.primary} height={20} />
+        <GaugeBar ratio={frame.meStamina / timeline.meMaxStamina} color={colors.primary} height={20} animationMs={80} />
         <Text style={styles.staminaText}>
           {Math.max(0, Math.round(frame.meStamina))} / {Math.round(timeline.meMaxStamina)}
         </Text>
@@ -78,7 +78,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
 
       <View style={styles.combatantBlock}>
         <Text style={styles.name}>{opponentName}</Text>
-        <GaugeBar ratio={frame.opponentStamina / timeline.opponentMaxStamina} color={colors.danger} height={20} />
+        <GaugeBar ratio={frame.opponentStamina / timeline.opponentMaxStamina} color={colors.danger} height={20} animationMs={80} />
         <Text style={styles.staminaText}>
           {Math.max(0, Math.round(frame.opponentStamina))} / {Math.round(timeline.opponentMaxStamina)}
         </Text>

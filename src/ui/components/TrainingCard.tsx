@@ -1,4 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useHoldRepeat } from '../hooks/useHoldRepeat';
 import { colors } from '../theme';
 
 interface Props {
@@ -12,6 +14,13 @@ interface Props {
 
 /** トレーニングカードの3列グリッドに並ぶカードの共通シェル(StatCard/ShoeCardで共用)。 */
 export function TrainingCard({ color, title, subtitle, buttonLabel, disabled, onPress }: Props) {
+  const [scale] = useState(() => new Animated.Value(1));
+  const { onPressIn, onPressOut } = useHoldRepeat({ onFire: onPress });
+
+  const animateTo = (toValue: number) => {
+    Animated.spring(scale, { toValue, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+  };
+
   return (
     <View style={styles.card}>
       <Text style={[styles.name, { color }]} numberOfLines={2}>
@@ -22,12 +31,23 @@ export function TrainingCard({ color, title, subtitle, buttonLabel, disabled, on
       </Text>
       <Pressable
         disabled={disabled}
-        onPress={onPress}
-        style={[styles.button, { backgroundColor: disabled ? colors.locked : color }]}
+        onPressIn={() => {
+          animateTo(0.93);
+          onPressIn();
+        }}
+        onPressOut={() => {
+          animateTo(1);
+          onPressOut();
+        }}
+        style={styles.buttonTouchArea}
       >
-        <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]} numberOfLines={1}>
-          {buttonLabel}
-        </Text>
+        <Animated.View
+          style={[styles.button, { backgroundColor: disabled ? colors.locked : color, transform: [{ scale }] }]}
+        >
+          <Text style={[styles.buttonText, disabled && styles.buttonTextDisabled]} numberOfLines={1}>
+            {buttonLabel}
+          </Text>
+        </Animated.View>
       </Pressable>
     </View>
   );
@@ -44,6 +64,7 @@ const styles = StyleSheet.create({
   },
   name: { fontWeight: '700', fontSize: 12, textAlign: 'center' },
   level: { fontSize: 13, color: colors.text },
+  buttonTouchArea: { width: '100%' },
   button: { borderRadius: 10, paddingVertical: 9, paddingHorizontal: 6, width: '100%' },
   buttonText: { color: colors.text, fontWeight: '800', fontSize: 12, textAlign: 'center' },
   buttonTextDisabled: { color: colors.lockedText },
