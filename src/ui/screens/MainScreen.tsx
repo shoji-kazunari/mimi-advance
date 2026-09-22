@@ -77,6 +77,10 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const [inBossBattle, setInBossBattle] = useState(false);
   const [enteringBattle, setEnteringBattle] = useState(false);
   const [postBattle, setPostBattle] = useState<PostBattlePhase | null>(null);
+  // 退場したのがどちら側かをbanner・wiping中も覚えておく(PostBattlePhaseの
+  // それらのkindはsideを持たないため)。退場後、終了ワイプが完全に覆うまでは
+  // 元の位置に戻さない(仕様書6章: バナー表示中に元の位置へワープして見えるのを防ぐ)。
+  const [exitedSide, setExitedSide] = useState<'me' | 'opponent' | null>(null);
 
   // 「ボスバトル」ボタンを押した瞬間の値で固定する。inBossBattleの真偽値自体は
   // ボタンを押した時にしか変わらないため、これをキーにすることで、バトル中に
@@ -144,10 +148,12 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
           { text: `+${bossRunnerPtReward(clearedStage)}ランナーpt`, color: colors.gold },
           { text: `+${bossVicMoneyReward(clearedStage)} Vicマネー`, color: colors.mint },
         ]);
+        setExitedSide('me');
         setPostBattle({ kind: 'exiting', side: 'me', clearedStage });
       } else {
         showToast('逃げられた...');
         showToast('トレーニングして再挑戦しよう');
+        setExitedSide('opponent');
         setPostBattle({ kind: 'exiting', side: 'opponent', clearedStage: null });
       }
     };
@@ -283,7 +289,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               meRatio={battlePlayback.frame.meStamina / battlePlayback.timeline.meMaxStamina}
               opponentRatio={battlePlayback.frame.opponentStamina / battlePlayback.timeline.opponentMaxStamina}
               burstTrigger={burstTrigger}
-              exitSide={postBattle?.kind === 'exiting' ? postBattle.side : null}
+              exitSide={exitedSide}
             />
           ) : (
             <TrackScene
@@ -310,7 +316,10 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
           {postBattle?.kind === 'wiping' && (
             <BlackFade
               exitAfterCovered
-              onCovered={() => setInBossBattle(false)}
+              onCovered={() => {
+                setInBossBattle(false);
+                setExitedSide(null);
+              }}
               onDone={() => setPostBattle(null)}
             />
           )}
