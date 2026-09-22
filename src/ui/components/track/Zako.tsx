@@ -56,9 +56,10 @@ export function Zako({ color, name, travelMs = TRAVEL_MS, onPass, onExit }: Prop
 }
 
 const styles = StyleSheet.create({
-  // 名前ラベルをアバターの上に置き、アバターの足が地面ライン(bottom:10%)に
-  // 着地するように逆算した位置(ラベルを下に置くと地面より下にはみ出すため)。
-  wrap: { position: 'absolute', top: '51%', alignItems: 'center', gap: 4, width: 70, marginLeft: -35 },
+  // 地面ライン(TrackBackgroundのgroundLayer)と同じbottom:10%を使うことで、
+  // トラックの高さが変わっても常にアバターの足元が地面に一致する
+  // (アバターが列の最後の要素なので、wrapのbottomがそのままアバターのbottomになる)。
+  wrap: { position: 'absolute', bottom: '10%', alignItems: 'center', gap: 4, width: 70, marginLeft: -35 },
   avatar: { width: 28, height: 40, borderRadius: 14 },
   label: { color: colors.subtext, fontSize: 10 },
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme';
 
 interface Props {
@@ -56,18 +56,26 @@ export function OpponentEntity({ label, color = '#ff9d3d', slideIn, exit = false
 
   return (
     <Animated.View style={[styles.wrap, { left }]} pointerEvents="none">
-      <Text style={styles.label} numberOfLines={1}>
-        {label}
-      </Text>
-      <Animated.View style={[styles.avatar, { backgroundColor: color, transform: [{ translateY }] }]} />
+      {/* 名前ラベルとアバターをまとめてtranslateYさせる。ジャンプ中もラベルが
+          アバターに追従しないと、名前だけ取り残されて障害物が名前の位置を
+          素通りしているように見えてしまうため。 */}
+      <Animated.View style={[styles.body, { transform: [{ translateY }] }]}>
+        <Text style={styles.label} numberOfLines={1}>
+          {label}
+        </Text>
+        <View style={[styles.avatar, { backgroundColor: color }]} />
+      </Animated.View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  // 名前ラベルをアバターの上に置き、アバターの足が地面ライン(bottom:10%)に
-  // 着地するように逆算した位置(ラベルを下に置くと地面より下にはみ出すため)。
-  wrap: { position: 'absolute', top: '39%', alignItems: 'center', gap: 6, width: 90, marginLeft: -45 },
+  // 地面ライン(TrackBackgroundのgroundLayer)と同じbottom:10%を使うことで、
+  // トラックの高さが変わっても常にアバターの足元が地面に一致する
+  // (bodyがこのwrap内の唯一の子で、アバターが列の最後の要素なので、
+  // wrapのbottomがそのままアバターのbottomになる)。
+  wrap: { position: 'absolute', bottom: '10%', width: 90, marginLeft: -45 },
+  body: { alignItems: 'center', gap: 6 },
   avatar: { width: 56, height: 56, borderRadius: 16 },
   label: { color: colors.subtext, fontSize: 11 },
 });

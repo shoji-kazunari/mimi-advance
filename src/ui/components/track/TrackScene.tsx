@@ -185,7 +185,8 @@ export function TrackScene(props: Props) {
 
 const styles = StyleSheet.create({
   scene: { flex: 1, position: 'relative' },
-  // 地面ライン(TrackBackgroundのgroundLayer、bottom:10%)に足が着くように、
-  // アバターの高さ(56)分を逆算した位置。
-  runnerWrap: { position: 'absolute', top: '50%', marginLeft: -20 },
+  // 地面ライン(TrackBackgroundのgroundLayer)と同じbottom:10%を使うことで、
+  // トラックの高さが変わっても常にアバターの足元が地面に一致する
+  // (以前はtopをtopを固定高さ用に逆算していたため、高さを変えるたびにズレていた)。
+  runnerWrap: { position: 'absolute', bottom: '10%', marginLeft: -20 },
 });
