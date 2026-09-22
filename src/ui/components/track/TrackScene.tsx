@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useObstacleJump } from '../../hooks/useObstacleJump';
 import { RunnerAvatar } from '../RunnerAvatar';
+import { ObstacleMarker } from './ObstacleMarker';
 import { OpponentEntity } from './OpponentEntity';
 import { TrackBackground } from './TrackBackground';
 import { Zako } from './Zako';
@@ -43,6 +44,7 @@ type Props = IdleProps | BattleProps;
 
 let zakoIdSeq = 0;
 const RUNNER_LEFT_PERCENT = 12;
+const OPPONENT_LEFT_PERCENT = 78;
 const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
 
@@ -122,13 +124,17 @@ export function TrackScene(props: Props) {
           ))}
         </>
       ) : (
-        <OpponentEntity
-          label={props.opponentLabel}
-          color={props.opponentColor}
-          slideIn={false}
-          exit={exitSide === 'opponent'}
-          jump={opponentJump}
-        />
+        <>
+          <OpponentEntity
+            label={props.opponentLabel}
+            color={props.opponentColor}
+            slideIn={false}
+            exit={exitSide === 'opponent'}
+            jump={opponentJump}
+          />
+          <ObstacleMarker elapsedMs={battleElapsed} jumpTimesMs={battleJumpTimes} leftPercent={RUNNER_LEFT_PERCENT} />
+          <ObstacleMarker elapsedMs={battleElapsed} jumpTimesMs={battleJumpTimes} leftPercent={OPPONENT_LEFT_PERCENT} />
+        </>
       )}
     </View>
   );
@@ -136,5 +142,7 @@ export function TrackScene(props: Props) {
 
 const styles = StyleSheet.create({
   scene: { flex: 1, position: 'relative' },
-  runnerWrap: { position: 'absolute', top: '22%', marginLeft: -20 },
+  // 地面ライン(TrackBackgroundのgroundLayer、bottom:10%)に足が着くように、
+  // アバターの高さ(56)分を逆算した位置。
+  runnerWrap: { position: 'absolute', top: '50%', marginLeft: -20 },
 });

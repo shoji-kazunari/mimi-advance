@@ -56,16 +56,18 @@ export function OpponentEntity({ label, color = '#ff9d3d', slideIn, exit = false
 
   return (
     <Animated.View style={[styles.wrap, { left }]} pointerEvents="none">
-      <Animated.View style={[styles.avatar, { backgroundColor: color, transform: [{ translateY }] }]} />
       <Text style={styles.label} numberOfLines={1}>
         {label}
       </Text>
+      <Animated.View style={[styles.avatar, { backgroundColor: color, transform: [{ translateY }] }]} />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', top: '22%', alignItems: 'center', gap: 6, width: 90, marginLeft: -45 },
+  // 名前ラベルをアバターの上に置き、アバターの足が地面ライン(bottom:10%)に
+  // 着地するように逆算した位置(ラベルを下に置くと地面より下にはみ出すため)。
+  wrap: { position: 'absolute', top: '39%', alignItems: 'center', gap: 6, width: 90, marginLeft: -45 },
   avatar: { width: 56, height: 56, borderRadius: 16 },
   label: { color: colors.subtext, fontSize: 11 },
 });

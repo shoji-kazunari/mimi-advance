@@ -47,16 +47,18 @@ export function Zako({ color, name, travelMs = TRAVEL_MS, onPass, onExit }: Prop
 
   return (
     <Animated.View style={[styles.wrap, { left }]} pointerEvents="none">
-      <Animated.View style={[styles.avatar, { backgroundColor: color }]} />
       <Text style={styles.label} numberOfLines={1}>
         {name}
       </Text>
+      <Animated.View style={[styles.avatar, { backgroundColor: color }]} />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', top: '30%', alignItems: 'center', gap: 4, width: 70, marginLeft: -35 },
+  // 名前ラベルをアバターの上に置き、アバターの足が地面ライン(bottom:10%)に
+  // 着地するように逆算した位置(ラベルを下に置くと地面より下にはみ出すため)。
+  wrap: { position: 'absolute', top: '51%', alignItems: 'center', gap: 4, width: 70, marginLeft: -35 },
   avatar: { width: 28, height: 40, borderRadius: 14 },
   label: { color: colors.subtext, fontSize: 10 },
 });
