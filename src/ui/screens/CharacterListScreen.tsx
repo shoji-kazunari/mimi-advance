@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { nextLockedCharacter } from '../../domain/characters';
-import { characterLevel } from '../../domain/stats';
 import { useGameStore } from '../../state/gameStore';
+import { EarAvatar } from '../components/EarAvatar';
+import { ModalCard } from '../components/ModalCard';
 import { useNotifications } from '../Notifications';
 import { colors } from '../theme';
 
@@ -12,7 +13,7 @@ interface Props {
 }
 
 type Row =
-  | { kind: 'owned'; defId: string; name: string; charLv: number; evolutionStage: number }
+  | { kind: 'owned'; defId: string; name: string; stage: number }
   | { kind: 'locked'; defId: string; name: string; cost: number };
 
 export function CharacterListScreen({ onOpenDetail, onBack }: Props) {
@@ -27,8 +28,7 @@ export function CharacterListScreen({ onOpenDetail, onBack }: Props) {
     kind: 'owned',
     defId: c.defId,
     name: c.name,
-    charLv: characterLevel(c),
-    evolutionStage: c.evolutionStage,
+    stage: c.stage,
   }));
 
   const locked = nextLockedCharacter(state.characters.map((c) => c.defId));
@@ -45,115 +45,79 @@ export function CharacterListScreen({ onOpenDetail, onBack }: Props) {
   };
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable onPress={onBack}>
-          <Text style={styles.back}>← 戻る</Text>
-        </Pressable>
-        <Text style={styles.title}>キャラ一覧・進化</Text>
-        <View style={{ width: 48 }} />
-      </View>
-      <FlatList
-        data={rows}
-        keyExtractor={(r) => r.defId}
-        numColumns={2}
-        columnWrapperStyle={{ gap: 12 }}
-        contentContainerStyle={{ gap: 12, padding: 16 }}
-        renderItem={({ item }) =>
-          item.kind === 'owned' ? (
-            <Pressable style={styles.card} onPress={() => onOpenDetail(item.defId)}>
-              <Text style={styles.avatar}>🐾</Text>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.sub}>キャラLv. {item.charLv.toFixed(1)}</Text>
-              <Text style={styles.sub}>進化段階 {item.evolutionStage}</Text>
-            </Pressable>
-          ) : (
-            <View style={[styles.card, styles.lockedCard]}>
-              <Text style={styles.avatar}>🔒</Text>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.sub}>{item.cost} Vicで解放</Text>
-              <Pressable
-                style={styles.unlockButton}
-                onPress={() => setConfirmTarget({ defId: item.defId, name: item.name, cost: item.cost })}
-              >
-                <Text style={styles.unlockButtonText}>解放する</Text>
+    <>
+      <ModalCard title="キャラ一覧" onClose={onBack} closeLabel="閉じる">
+        <View style={styles.grid}>
+          {rows.map((item) =>
+            item.kind === 'owned' ? (
+              <Pressable key={item.defId} style={[styles.card, styles.ownedCard]} onPress={() => onOpenDetail(item.defId)}>
+                <EarAvatar size={64} />
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.sub}>ステージ {item.stage}</Text>
               </Pressable>
-            </View>
-          )
-        }
-      />
+            ) : (
+              <Pressable key={item.defId} style={styles.card} onPress={() => setConfirmTarget(item)}>
+                <View style={styles.lockedCircle} />
+                <Text style={styles.name}>🔒 {item.name}</Text>
+                <Text style={styles.sub}>Vicマネー {item.cost}で解放</Text>
+              </Pressable>
+            )
+          )}
+        </View>
+      </ModalCard>
 
-      <Modal visible={!!confirmTarget} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>新キャラを解放</Text>
-            <Text style={styles.modalQuestion}>{confirmTarget?.name} を解放しますか？</Text>
-            <View style={styles.walletRow}>
-              <View style={styles.walletChip}>
-                <Text style={styles.walletLabel}>所持Vicマネー</Text>
-                <Text style={styles.walletValue}>{Math.floor(state.vicMoney)}</Text>
-              </View>
-              <View style={styles.walletChip}>
-                <Text style={styles.walletLabel}>消費Vicマネー</Text>
-                <Text style={styles.walletValue}>{confirmTarget?.cost}</Text>
-              </View>
+      {confirmTarget && (
+        <ModalCard title="新キャラを解放" onClose={() => setConfirmTarget(null)} closeLabel="やめる">
+          <Text style={styles.modalQuestion}>「{confirmTarget.name}」を解放しますか？</Text>
+          <View style={styles.walletCol}>
+            <View style={styles.walletBox}>
+              <Text style={styles.walletLabel}>所持Vicマネー</Text>
+              <Text style={styles.walletValue}>{Math.floor(state.vicMoney)}</Text>
             </View>
-            <Text style={styles.modalNote}>キャラを解放するとランナーとして使用できます。</Text>
-            <View style={styles.modalButtonRow}>
-              <Pressable style={styles.modalCancel} onPress={() => setConfirmTarget(null)}>
-                <Text>キャンセル</Text>
-              </Pressable>
-              <Pressable
-                disabled={!confirmTarget || state.vicMoney < confirmTarget.cost}
-                style={[
-                  styles.modalConfirm,
-                  {
-                    backgroundColor:
-                      confirmTarget && state.vicMoney >= confirmTarget.cost ? colors.primary : colors.locked,
-                  },
-                ]}
-                onPress={handleConfirmUnlock}
-              >
-                <Text style={styles.modalConfirmText}>解放する</Text>
-              </Pressable>
+            <View style={styles.walletBox}>
+              <Text style={styles.walletLabel}>消費Vicマネー</Text>
+              <Text style={styles.walletValue}>{confirmTarget.cost}</Text>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+          <Text style={styles.modalNote}>キャラを解放するとランナーとして使用できます。</Text>
+          <Pressable
+            disabled={state.vicMoney < confirmTarget.cost}
+            style={[
+              styles.confirmButton,
+              { backgroundColor: state.vicMoney >= confirmTarget.cost ? colors.primary : colors.locked },
+            ]}
+            onPress={handleConfirmUnlock}
+          >
+            <Text style={styles.confirmButtonText}>解放する</Text>
+          </Pressable>
+        </ModalCard>
+      )}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  back: { color: colors.primary, width: 48 },
-  title: { fontSize: 16, fontWeight: '700', color: colors.text },
+  grid: { flexDirection: 'row', gap: 12, width: '100%' },
   card: {
     flex: 1,
-    backgroundColor: colors.card,
+    backgroundColor: colors.cardInset,
     borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
     padding: 14,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  lockedCard: { opacity: 0.85 },
-  avatar: { fontSize: 32 },
+  ownedCard: { borderColor: colors.accent },
+  lockedCircle: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: colors.border },
   name: { fontWeight: '700', color: colors.text },
   sub: { fontSize: 12, color: colors.subtext },
-  unlockButton: { marginTop: 6, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: colors.primary },
-  unlockButtonText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
-  modalCard: { width: '85%', backgroundColor: colors.card, borderRadius: 16, padding: 20, gap: 12 },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  modalQuestion: { fontSize: 14, color: colors.text },
-  walletRow: { flexDirection: 'row', gap: 10 },
-  walletChip: { flex: 1, backgroundColor: colors.cardInset, borderRadius: 12, padding: 10, alignItems: 'center' },
+  modalQuestion: { fontSize: 14, color: colors.text, textAlign: 'center' },
+  walletCol: { width: '100%', gap: 10 },
+  walletBox: { backgroundColor: colors.cardInset, borderRadius: 12, padding: 10, alignItems: 'center', gap: 2 },
   walletLabel: { fontSize: 12, color: colors.subtext },
   walletValue: { fontSize: 18, fontWeight: '800', color: colors.text },
-  modalNote: { fontSize: 12, color: colors.subtext },
-  modalButtonRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
-  modalCancel: { paddingVertical: 8, paddingHorizontal: 14 },
-  modalConfirm: { borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
-  modalConfirmText: { color: '#fff', fontWeight: '700' },
+  modalNote: { fontSize: 12, color: colors.subtext, textAlign: 'center' },
+  confirmButton: { width: '100%', borderRadius: 14, paddingVertical: 12, alignItems: 'center' },
+  confirmButtonText: { color: '#fff', fontWeight: '700' },
 });

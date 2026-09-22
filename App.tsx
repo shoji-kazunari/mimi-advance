@@ -72,18 +72,14 @@ function Root() {
       />
 
       {overlay?.name === 'characters' && (
-        <View style={StyleSheet.absoluteFill}>
-          <CharacterListScreen
-            onBack={() => setOverlay(null)}
-            onOpenDetail={(defId) => setOverlay({ name: 'characterDetail', defId })}
-          />
-        </View>
+        <CharacterListScreen
+          onBack={() => setOverlay(null)}
+          onOpenDetail={(defId) => setOverlay({ name: 'characterDetail', defId })}
+        />
       )}
 
       {overlay?.name === 'characterDetail' && (
-        <View style={StyleSheet.absoluteFill}>
-          <CharacterDetailScreen defId={overlay.defId} onBack={() => setOverlay({ name: 'characters' })} />
-        </View>
+        <CharacterDetailScreen defId={overlay.defId} onBack={() => setOverlay({ name: 'characters' })} />
       )}
 
       {overlay?.name === 'vsSelect' && (
