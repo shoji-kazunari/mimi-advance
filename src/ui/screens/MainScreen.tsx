@@ -302,6 +302,24 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
             ))}
           </View>
           {postBattle?.kind === 'banner' && <CenterBanner text={postBattle.text} />}
+
+          {postBattle?.kind === 'wiping' && (
+            <BlackFade
+              onDone={() => {
+                setPostBattle(null);
+                setInBossBattle(false);
+              }}
+            />
+          )}
+
+          {enteringBattle && (
+            <BlackFade
+              onDone={() => {
+                setEnteringBattle(false);
+                setInBossBattle(true);
+              }}
+            />
+          )}
         </Animated.View>
 
         <Animated.View
@@ -496,24 +514,6 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
 
         <SaveCodeModal visible={saveCodeVisible} onClose={() => setSaveCodeVisible(false)} />
       </ScrollView>
-
-      {postBattle?.kind === 'wiping' && (
-        <BlackFade
-          onDone={() => {
-            setPostBattle(null);
-            setInBossBattle(false);
-          }}
-        />
-      )}
-
-      {enteringBattle && (
-        <BlackFade
-          onDone={() => {
-            setEnteringBattle(false);
-            setInBossBattle(true);
-          }}
-        />
-      )}
     </View>
   );
 }
