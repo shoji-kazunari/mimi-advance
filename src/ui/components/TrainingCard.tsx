@@ -24,14 +24,18 @@ interface Props {
 }
 
 // タップ操作でのブラウザ/iOS標準の挙動(テキスト選択・長押しの拡大鏡・コールアウトメニュー)を
-// 止める。touchActionが無いと、子のuserSelectだけではタッチイベントを受け取る要素自体の
-// 長押し判定を止めきれない。RNのスタイル型には無いプロパティなのでキャストする。
+// 止める。RNのスタイル型には無いプロパティなのでキャストする。
 const noTextSelect = {
   userSelect: 'none',
   WebkitUserSelect: 'none',
   WebkitTouchCallout: 'none',
-  touchAction: 'none',
 } as unknown as StyleProp<ViewStyle>;
+
+// 実際にタッチイベントを受け取る要素(panHandlersを持つView)にだけ付ける。
+// touchAction: 'none'にすると縦スクロールまでブラウザに無視されてしまうため、
+// 縦方向のスクロールは許可しつつ(pan-y)、動いたかどうかの判定自体はJS側
+// (useHoldRepeatの8px判定+初回発火の保留)で行う。
+const touchTarget = { ...noTextSelect, touchAction: 'pan-y' } as unknown as StyleProp<ViewStyle>;
 
 /**
  * ボタン内の文字サイズ。「789pt」のような短い表示は大きく、「1,000Vicで解放」のような
@@ -117,7 +121,7 @@ export function TrainingCard({
       >
         {value}
       </Animated.Text>
-      <View style={[styles.buttonTouchArea, noTextSelect]} {...(disabled ? {} : panHandlers)}>
+      <View style={[styles.buttonTouchArea, touchTarget]} {...(disabled ? {} : panHandlers)}>
         <Animated.View
           style={[styles.button, noTextSelect, { backgroundColor: buttonColor, transform: [{ scale }] }]}
         >

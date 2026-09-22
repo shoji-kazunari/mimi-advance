@@ -16,6 +16,12 @@ interface Options {
  * 「気持ちよさ」のための挙動)。タップした瞬間に1回、そのままinitialDelayMsだけ押し続けたら
  * repeatIntervalMsごとに連射する。
  *
+ * 発火はタッチ開始の瞬間ではなく、initialDelayMsの間「動かなかった」ことを確認してから行う
+ * (指を置いた瞬間に即発火すると、ボタンの上から指でスクロールしようとしただけで
+ * 1回分強化されてしまう。動いたらそのまま何も発火せずにキャンセルする)。
+ * 素早くタップして離した場合は、離した瞬間に確定として1回発火する(押した感触が
+ * initialDelayMs分遅れて鈍く感じないようにするため)。
+ *
  * Pressableの標準pressハンドラではなくPanResponderで自前実装しているのは、
  * ブラウザの「長押し=テキスト選択/コールアウトメニュー」を確実に避けるため
  * (Pressableの上にonTouchMove等を足すと責任者システムが競合する)と、
@@ -23,8 +29,8 @@ interface Options {
  *
  * PanResponderはメモ化せず毎レンダーで作り直している(生成コスト自体は軽く、
  * onFire/disabledを常に最新の値で直接クロージャに取り込めるので、コールバックを
- * refで持ち回す必要がなくなる)。timeoutRef/intervalRef/startXYRefはレンダーには
- * 使わない可変値(タイマーIDと開始座標)なのでrefで持つ。
+ * refで持ち回す必要がなくなる)。timeoutRef/intervalRef/startXYRef/firedRefはレンダーには
+ * 使わない可変値(タイマーIDと開始座標、発火済みフラグ)なのでrefで持つ。
  * react-hooks/refsは「レンダー中に生成される関数がrefを読む」パターンを
  * PanResponder.create()のような外部APIに渡す場合まで一律で警告してくるが、
  * PanResponderの各コールバックはジェスチャー発生時にしか呼ばれずレンダー中には
@@ -41,6 +47,8 @@ export function useHoldRepeat({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startXYRef = useRef({ x: 0, y: 0 });
+  // このジェスチャーで(保留タイマー経由で)一度でも発火したか。releaseで二重発火しないための印。
+  const firedRef = useRef(false);
 
   // 連打中にptが尽きてdisabledになったら、その場で連打を止めるためのもの。
   // 走り出したsetIntervalのコールバックは開始時のdisabledを掴んだままなので、refで最新を見る。
@@ -56,6 +64,16 @@ export function useHoldRepeat({
     intervalRef.current = null;
   };
 
+  const startRepeating = () => {
+    intervalRef.current = setInterval(() => {
+      if (disabledRef.current) {
+        clear();
+        return;
+      }
+      onFire();
+    }, repeatIntervalMs);
+  };
+
   // eslint-disable-next-line react-hooks/refs -- 上記コメント参照: PanResponderのコールバックはレンダー中には呼ばれない
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => !disabled,
@@ -67,15 +85,13 @@ export function useHoldRepeat({
       startXYRef.current = { x: pageX, y: pageY };
       onPressStateChange?.(true);
       clear();
-      onFire();
+      firedRef.current = false;
+      // ここではまだ発火しない。initialDelayMsの間、動かずに押し続けたことを
+      // 確認できて初めて「連打の1発目」として発火する。
       timeoutRef.current = setTimeout(() => {
-        intervalRef.current = setInterval(() => {
-          if (disabledRef.current) {
-            clear();
-            return;
-          }
-          onFire();
-        }, repeatIntervalMs);
+        firedRef.current = true;
+        onFire();
+        startRepeating();
       }, initialDelayMs);
     },
     onPanResponderMove: (evt: GestureResponderEvent) => {
@@ -83,11 +99,16 @@ export function useHoldRepeat({
       const dx = pageX - startXYRef.current.x;
       const dy = pageY - startXYRef.current.y;
       if (Math.hypot(dx, dy) > moveCancelPx) {
+        // スクロールとみなし、まだ発火していなければ何も発火せずに終える。
         clear();
         onPressStateChange?.(false);
       }
     },
     onPanResponderRelease: () => {
+      // 保留タイマーが発火する前に離した = 動かさずに素早くタップした、とみなして今確定させる。
+      if (!firedRef.current && timeoutRef.current) {
+        onFire();
+      }
       clear();
       onPressStateChange?.(false);
     },
