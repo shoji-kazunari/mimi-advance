@@ -93,7 +93,13 @@ export function CharacterDetailScreen({ defId, onBack }: Props) {
             end={{ x: 1, y: 0 }}
             style={styles.evolveButton}
           >
-            <Text style={styles.evolveButtonText}>進化</Text>
+            <Text style={styles.evolveButtonText}>
+              {evolvable
+                ? '進化可能'
+                : step
+                  ? `進化 (キャラLv.${step.requiredCharLv}で可能)`
+                  : '進化 (最大進化済み)'}
+            </Text>
           </LinearGradient>
         </Pressable>
 
