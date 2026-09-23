@@ -16,6 +16,8 @@ interface Props {
   elapsedMs?: number;
   jumpTimesMs?: number[];
   attackTimesMs?: number[];
+  /** 勝敗後の退場中はtrue。ジャンプ/アタックの途中で決着しても走りループに強制する。 */
+  forceRun?: boolean;
 }
 
 const BOB_PERIOD_MS = 320;
@@ -36,6 +38,7 @@ export function RunnerAvatar({
   elapsedMs = 0,
   jumpTimesMs = EMPTY,
   attackTimesMs = EMPTY,
+  forceRun = false,
 }: Props) {
   const [bob] = useState(() => new Animated.Value(0));
   const [zero] = useState(() => new Animated.Value(0));
@@ -62,7 +65,7 @@ export function RunnerAvatar({
     return () => loop.stop();
   }, [bob, spriteSet]);
 
-  const pose = useSpritePose(elapsedMs, jumpTimesMs, attackTimesMs);
+  const pose = useSpritePose(elapsedMs, jumpTimesMs, attackTimesMs, forceRun);
 
   const bobTranslateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
   const translateY = spriteSet ? jump ?? zero : Animated.add(bobTranslateY, jump ?? zero);

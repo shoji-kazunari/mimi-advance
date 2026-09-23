@@ -240,11 +240,12 @@ export function TrackScene(props: Props) {
       <Animated.View style={[styles.runnerWrap, { left: runnerLeft }]} pointerEvents="none">
         <RunnerAvatar
           burstTrigger={burstTrigger}
-          jump={props.mode === 'battle' ? runnerJump : undefined}
+          jump={props.mode === 'battle' && exitSide !== 'me' ? runnerJump : undefined}
           spriteSet={props.runnerSpriteSet}
           elapsedMs={battleElapsed}
           jumpTimesMs={runnerJumpTimes}
           attackTimesMs={meAttackTimesMs}
+          forceRun={exitSide === 'me'}
         />
       </Animated.View>
     </View>

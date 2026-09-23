@@ -78,8 +78,10 @@ export function OpponentEntity({
     inputRange: [0, 1, 2],
     outputRange: ['100%', `${settleLeftPercent}%`, `${EXIT_LEFT_PERCENT}%`],
   });
-  const translateY = jump ?? zero;
-  const pose = useSpritePose(elapsedMs, jumpTimesMs, attackTimesMs);
+  // 敗北退場中はRunnerAvatarの勝利退場と同じ理由(決着時刻がジャンプの途中に重なると
+  // 着地フレームで固まって見える)で、走りループを強制する。
+  const translateY = exit ? zero : jump ?? zero;
+  const pose = useSpritePose(elapsedMs, jumpTimesMs, attackTimesMs, exit);
 
   return (
     <Animated.View style={[styles.wrap, { left }]} pointerEvents="none">

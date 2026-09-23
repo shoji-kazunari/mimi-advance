@@ -25,7 +25,18 @@ interface ActiveEvent {
  * 1回だけ再生する」方式。jumpTimesMs/attackTimesMsが空の間は常にrunを返す
  * (アイドル中のループ走行にそのまま使える)。
  */
-export function useSpritePose(elapsedMs: number, jumpTimesMs: number[], attackTimesMs: number[]) {
+export function useSpritePose(
+  elapsedMs: number,
+  jumpTimesMs: number[],
+  attackTimesMs: number[],
+  /**
+   * trueの間は、ジャンプ/アタックの途中であっても常に走りループを返す。
+   * 勝敗後の退場演出はバトルのelapsedMsが決着時刻で止まったままスライドするため、
+   * ちょうどジャンプの着地フレームで決着すると、退場中ずっとそのまま固まって見える
+   * (仕様書6章の退場は「走って去る」動きのはずなので、そこだけ強制的に上書きする)。
+   */
+  forceRun = false
+) {
   const [runTick, setRunTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setRunTick((t) => (t + 1) % RUN_SEQUENCE.length), RUN_FRAME_MS);
@@ -64,7 +75,7 @@ export function useSpritePose(elapsedMs: number, jumpTimesMs: number[], attackTi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elapsedMs, jumpKey, attackKey]);
 
-  if (activeEvent) {
+  if (!forceRun && activeEvent) {
     const t = elapsedMs - activeEvent.startMs;
     if (t >= 0 && t < activeEvent.durationMs) {
       const frameIndex = t < activeEvent.durationMs * 0.35 ? 0 : t < activeEvent.durationMs * 0.65 ? 1 : 2;
