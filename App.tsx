@@ -7,6 +7,7 @@ import { VsOpponent, vsRaceVicReward } from './src/domain/vsRace';
 import { useGameStore } from './src/state/gameStore';
 import { useActiveCharacter } from './src/state/selectors';
 import { NotificationProvider, useNotifications } from './src/ui/Notifications';
+import { prefetchAllCharacterSprites } from './src/ui/spriteAssets';
 import { applyWebTouchFix } from './src/ui/webTouchFix';
 import { BattleScreen } from './src/ui/screens/BattleScreen';
 import { ButtonLab } from './src/ui/screens/ButtonLab';
@@ -39,6 +40,7 @@ function Root() {
 
   useEffect(() => {
     void hydrate();
+    prefetchAllCharacterSprites();
   }, [hydrate]);
 
   // バトル用プロファイルは「その画面に入った瞬間」の値で固定する。overlay自体の参照は
