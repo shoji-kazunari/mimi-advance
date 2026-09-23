@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
+import { useSpritePose } from '../hooks/useSpritePose';
+import { CharacterSpriteSet } from '../spriteAssets';
 import { colors } from '../theme';
 
 interface Props {
@@ -8,20 +10,38 @@ interface Props {
   burstTrigger?: number;
   /** バトル中の障害物ジャンプ(useObstacleJump)。通常時は指定しない。 */
   jump?: Animated.AnimatedInterpolation<number>;
+  /** 実素材(AI下絵)があるキャラだけ渡す。無ければ従来の色付き図形にフォールバックする。 */
+  spriteSet?: CharacterSpriteSet;
+  /** spriteSet指定時、走り/ジャンプ/アタックのどのフレームを出すか判定するために使う。 */
+  elapsedMs?: number;
+  jumpTimesMs?: number[];
+  attackTimesMs?: number[];
 }
 
 const BOB_PERIOD_MS = 320;
+const EMPTY: number[] = [];
 
 /**
  * 「耳アド UI手触り仕様書」5章のキャラモーション。
- * 通常時は常に小さく上下にバウンド(0.32秒周期)。強化した瞬間はburstTriggerを
- * インクリメントしてもらうことで、金色の光の輪+5個のスパークルを1回だけ再生する。
+ * 実素材(spriteSet)がある場合は走り/ジャンプ/アタックの3枚組フレームを切り替えて再生する。
+ * 無い場合は従来どおり、色付きの図形が常に小さく上下にバウンド(0.32秒周期)する。
+ * 強化した瞬間はburstTriggerをインクリメントしてもらうことで、金色の光の輪+5個の
+ * スパークルを1回だけ再生する(どちらの見た目でも共通)。
  */
-export function RunnerAvatar({ color = colors.accent, burstTrigger = 0, jump }: Props) {
+export function RunnerAvatar({
+  color = colors.accent,
+  burstTrigger = 0,
+  jump,
+  spriteSet,
+  elapsedMs = 0,
+  jumpTimesMs = EMPTY,
+  attackTimesMs = EMPTY,
+}: Props) {
   const [bob] = useState(() => new Animated.Value(0));
   const [zero] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
+    if (spriteSet) return; // 実素材があるときは走りフレーム自体が動きを表現するのでボビングしない
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(bob, {
@@ -40,16 +60,24 @@ export function RunnerAvatar({ color = colors.accent, burstTrigger = 0, jump }: 
     );
     loop.start();
     return () => loop.stop();
-  }, [bob]);
+  }, [bob, spriteSet]);
+
+  const pose = useSpritePose(elapsedMs, jumpTimesMs, attackTimesMs);
 
   const bobTranslateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
-  const translateY = Animated.add(bobTranslateY, jump ?? zero);
+  const translateY = spriteSet ? jump ?? zero : Animated.add(bobTranslateY, jump ?? zero);
   const rotate = bob.interpolate({ inputRange: [0, 1], outputRange: ['-2deg', '2deg'] });
 
   return (
     <View style={styles.wrap}>
       {burstTrigger > 0 && <LevelUpBurst key={burstTrigger} />}
-      <Animated.View style={[styles.avatar, { backgroundColor: color, transform: [{ translateY }, { rotate }] }]} />
+      {spriteSet ? (
+        <Animated.View style={{ transform: [{ translateY }] }}>
+          <Image source={spriteSet[pose.phase][pose.frameIndex]} style={styles.sprite} resizeMode="contain" />
+        </Animated.View>
+      ) : (
+        <Animated.View style={[styles.avatar, { backgroundColor: color, transform: [{ translateY }, { rotate }] }]} />
+      )}
     </View>
   );
 }
@@ -106,11 +134,14 @@ function LevelUpBurst() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: 40, height: 56, alignItems: 'center', justifyContent: 'center' },
+  // ボスの表示枠(56×56、正方形)に合わせた。色付き図形フォールバック(avatar)は
+  // 従来サイズのままこの枠の中央に表示する。
+  wrap: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
   avatar: { width: 40, height: 56, borderRadius: 20 },
+  sprite: { width: 56, height: 56 },
   burstWrap: {
     position: 'absolute',
-    width: 40,
+    width: 56,
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',

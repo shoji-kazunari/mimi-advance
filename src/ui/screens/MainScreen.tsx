@@ -21,6 +21,7 @@ import { StatCard } from '../components/StatCard';
 import { opponentLeftPercentForRatios, TrackScene } from '../components/track/TrackScene';
 import { TrackToastLayer } from '../components/track/TrackToastLayer';
 import { SaveCodeModal } from './SaveCodeModal';
+import { BOSS_SPRITES, CHARACTER_SPRITES } from '../spriteAssets';
 import { colors } from '../theme';
 
 const NG_WORDS = ['死ね', 'クソ', 'アホ'];
@@ -149,6 +150,12 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
       }),
     [battlePlayback.timeline]
   );
+
+  // 実素材(AI下絵)があるキャラだけ渡す。無いキャラ(スズなど)は従来の色付き図形にフォールバックする。
+  const runnerSpriteSet = CHARACTER_SPRITES[character.defId];
+  // アタックは発動側がattackUnlockedのときだけ起きる(仕様書5章)ので、演出もそれに合わせて出し分ける。
+  const meAttackTimesMs = bossBattleProfiles?.me.attackUnlocked ? battlePlayback.timeline.attackTimesMs : [];
+  const opponentAttackTimesMs = bossBattleProfiles?.boss.attackUnlocked ? battlePlayback.timeline.attackTimesMs : [];
 
   const settledRef = useRef(false);
   useEffect(() => {
@@ -312,6 +319,10 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               opponentRatio={battlePlayback.frame.opponentStamina / battlePlayback.timeline.opponentMaxStamina}
               burstTrigger={burstTrigger}
               exitSide={exitedSide}
+              runnerSpriteSet={runnerSpriteSet}
+              opponentSpriteSet={BOSS_SPRITES}
+              meAttackTimesMs={meAttackTimesMs}
+              opponentAttackTimesMs={opponentAttackTimesMs}
             />
           ) : (
             <TrackScene
@@ -321,6 +332,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               bossReady={bossReady}
               onZakoPass={handleZakoPass}
               burstTrigger={burstTrigger}
+              runnerSpriteSet={runnerSpriteSet}
             />
           )}
           <View style={styles.popupLayer} pointerEvents="none">

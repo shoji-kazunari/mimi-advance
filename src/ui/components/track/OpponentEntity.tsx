@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
+import { useSpritePose } from '../../hooks/useSpritePose';
+import { CharacterSpriteSet } from '../../spriteAssets';
 import { colors } from '../../theme';
 
 interface Props {
@@ -20,12 +22,19 @@ interface Props {
    * 未指定時はSETTLE_LEFT_PERCENT(スライドイン直後の定位置)。
    */
   settleLeftPercent?: number;
+  /** 実素材(AI下絵)があるときだけ渡す。無ければ従来の色付き図形にフォールバックする。 */
+  spriteSet?: CharacterSpriteSet;
+  /** spriteSet指定時、走り/ジャンプ/アタックのどのフレームを出すか判定するために使う。 */
+  elapsedMs?: number;
+  jumpTimesMs?: number[];
+  attackTimesMs?: number[];
 }
 
 const SETTLE_LEFT_PERCENT = 78;
 const EXIT_LEFT_PERCENT = 140;
 const SLIDE_IN_MS = 1100;
 const EXIT_MS = 450;
+const EMPTY: number[] = [];
 
 /** ボス/VS対戦相手の共通表示。「耳アド UI手触り仕様書」6章のボス出現スライドイン・敗北退場。 */
 export function OpponentEntity({
@@ -35,6 +44,10 @@ export function OpponentEntity({
   exit = false,
   jump,
   settleLeftPercent = SETTLE_LEFT_PERCENT,
+  spriteSet,
+  elapsedMs = 0,
+  jumpTimesMs = EMPTY,
+  attackTimesMs = EMPTY,
 }: Props) {
   // anim: 0=画面右外、1=定位置(78%)、2=退場しきった状態(140%)。
   const [anim] = useState(() => new Animated.Value(slideIn ? 0 : 1));
@@ -66,6 +79,7 @@ export function OpponentEntity({
     outputRange: ['100%', `${settleLeftPercent}%`, `${EXIT_LEFT_PERCENT}%`],
   });
   const translateY = jump ?? zero;
+  const pose = useSpritePose(elapsedMs, jumpTimesMs, attackTimesMs);
 
   return (
     <Animated.View style={[styles.wrap, { left }]} pointerEvents="none">
@@ -76,7 +90,11 @@ export function OpponentEntity({
         <Text style={styles.label} numberOfLines={1}>
           {label}
         </Text>
-        <View style={[styles.avatar, { backgroundColor: color }]} />
+        {spriteSet ? (
+          <Image source={spriteSet[pose.phase][pose.frameIndex]} style={styles.sprite} resizeMode="contain" />
+        ) : (
+          <View style={[styles.avatar, { backgroundColor: color }]} />
+        )}
       </Animated.View>
     </Animated.View>
   );
@@ -90,5 +108,6 @@ const styles = StyleSheet.create({
   wrap: { position: 'absolute', bottom: '10%', width: 90, marginLeft: -45 },
   body: { alignItems: 'center', gap: 6 },
   avatar: { width: 56, height: 56, borderRadius: 16 },
+  sprite: { width: 56, height: 56 },
   label: { color: colors.subtext, fontSize: 11 },
 });

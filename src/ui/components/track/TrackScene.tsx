@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useObstacleJump } from '../../hooks/useObstacleJump';
+import { BOSS_SPRITES, CharacterSpriteSet } from '../../spriteAssets';
 import { RunnerAvatar } from '../RunnerAvatar';
 import { OpponentEntity } from './OpponentEntity';
 import { TrackBackground } from './TrackBackground';
@@ -25,6 +26,8 @@ interface IdleProps {
   /** ザコが自キャラの位置を追い抜いた瞬間に呼ばれる(pt付与などはこの中で行う)。 */
   onZakoPass: () => void;
   burstTrigger: number;
+  /** 実素材(AI下絵)があるキャラだけ渡す。無ければ従来の色付き図形にフォールバックする。 */
+  runnerSpriteSet?: CharacterSpriteSet;
 }
 
 interface BattleProps {
@@ -50,6 +53,14 @@ interface BattleProps {
   burstTrigger?: number;
   /** 勝敗演出: 'me'で自キャラが、'opponent'で相手が右へ加速して退場する(仕様書6章)。 */
   exitSide?: 'me' | 'opponent' | null;
+  /** 実素材(AI下絵)があるキャラだけ渡す。無ければ従来の色付き図形にフォールバックする。 */
+  runnerSpriteSet?: CharacterSpriteSet;
+  /** ボス戦のときだけ渡す(VSレースには専用素材が無いため未指定のままにする)。 */
+  opponentSpriteSet?: CharacterSpriteSet;
+  /** timeline.attackTimesMsを、自キャラ側がattackUnlockedのときだけ渡す(呼び出し側でフィルタ済み)。 */
+  meAttackTimesMs?: number[];
+  /** timeline.attackTimesMsを、相手側がattackUnlockedのときだけ渡す(呼び出し側でフィルタ済み)。 */
+  opponentAttackTimesMs?: number[];
 }
 
 type Props = IdleProps | BattleProps;
@@ -109,6 +120,8 @@ export function TrackScene(props: Props) {
     props.mode === 'battle'
       ? opponentJumpTimes.map((t, i) => t + (MS_TO_RUNNER - msToOpponentAtJump[i]))
       : EMPTY_JUMPS;
+  const meAttackTimesMs = props.mode === 'battle' ? props.meAttackTimesMs ?? EMPTY_JUMPS : EMPTY_JUMPS;
+  const opponentAttackTimesMs = props.mode === 'battle' ? props.opponentAttackTimesMs ?? EMPTY_JUMPS : EMPTY_JUMPS;
 
   const [zakoList, setZakoList] = useState<{ id: number; name: string; color: string }[]>([]);
 
@@ -196,10 +209,17 @@ export function TrackScene(props: Props) {
           />
         ))}
       <Animated.View style={[styles.runnerWrap, { left: runnerLeft }]} pointerEvents="none">
-        <RunnerAvatar burstTrigger={burstTrigger} jump={props.mode === 'battle' ? runnerJump : undefined} />
+        <RunnerAvatar
+          burstTrigger={burstTrigger}
+          jump={props.mode === 'battle' ? runnerJump : undefined}
+          spriteSet={props.runnerSpriteSet}
+          elapsedMs={battleElapsed}
+          jumpTimesMs={runnerJumpTimes}
+          attackTimesMs={meAttackTimesMs}
+        />
       </Animated.View>
       {props.mode === 'idle' ? (
-        bossReady && <OpponentEntity label="BOSS" slideIn />
+        bossReady && <OpponentEntity label="BOSS" slideIn spriteSet={BOSS_SPRITES} />
       ) : (
         <>
           <OpponentEntity
@@ -209,6 +229,10 @@ export function TrackScene(props: Props) {
             exit={exitSide === 'opponent'}
             jump={opponentJump}
             settleLeftPercent={opponentSettleLeft}
+            spriteSet={props.opponentSpriteSet}
+            elapsedMs={battleElapsed}
+            jumpTimesMs={opponentJumpTimes}
+            attackTimesMs={opponentAttackTimesMs}
           />
           {obstacleList.map((o) => (
             <TrackObstacle
@@ -227,5 +251,6 @@ const styles = StyleSheet.create({
   // 地面ライン(TrackBackgroundのgroundLayer)と同じbottom:10%を使うことで、
   // トラックの高さが変わっても常にアバターの足元が地面に一致する
   // (以前はtopをtopを固定高さ用に逆算していたため、高さを変えるたびにズレていた)。
-  runnerWrap: { position: 'absolute', bottom: '10%', marginLeft: -20 },
+  // RunnerAvatarの表示枠(56×56、ボスと揃えた正方形)の幅の半分だけ左にずらして中央を基準にする。
+  runnerWrap: { position: 'absolute', bottom: '10%', marginLeft: -28 },
 });
