@@ -87,19 +87,20 @@ export function TrackBackground() {
 
 const styles = StyleSheet.create({
   // プレースホルダー時代の24px/4pxでは実素材を入れる余地が無かったため、絵に合わせて広げた。
+  // 「思ったより遠い」というフィードバックを受けて、さらに拡大・不透明度を上げて近さを出した。
   farLayer: {
     position: 'absolute',
-    top: '6%',
+    top: '4%',
     width: '200%',
-    height: 80,
+    height: 120,
     flexDirection: 'row',
-    opacity: 0.5,
+    opacity: 0.65,
   },
   groundLayer: {
     position: 'absolute',
     bottom: '10%',
     width: '200%',
-    height: 44,
+    height: 66,
     flexDirection: 'row',
   },
   patternImage: {

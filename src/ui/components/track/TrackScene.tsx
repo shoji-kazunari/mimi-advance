@@ -251,6 +251,6 @@ const styles = StyleSheet.create({
   // 地面ライン(TrackBackgroundのgroundLayer)と同じbottom:10%を使うことで、
   // トラックの高さが変わっても常にアバターの足元が地面に一致する
   // (以前はtopをtopを固定高さ用に逆算していたため、高さを変えるたびにズレていた)。
-  // RunnerAvatarの表示枠(56×56、ボスと揃えた正方形)の幅の半分だけ左にずらして中央を基準にする。
-  runnerWrap: { position: 'absolute', bottom: '10%', marginLeft: -28 },
+  // RunnerAvatarの表示枠(84×84、ボスと揃えた正方形)の幅の半分だけ左にずらして中央を基準にする。
+  runnerWrap: { position: 'absolute', bottom: '10%', marginLeft: -42 },
 });

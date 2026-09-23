@@ -105,9 +105,10 @@ const styles = StyleSheet.create({
   // トラックの高さが変わっても常にアバターの足元が地面に一致する
   // (bodyがこのwrap内の唯一の子で、アバターが列の最後の要素なので、
   // wrapのbottomがそのままアバターのbottomになる)。
-  wrap: { position: 'absolute', bottom: '10%', width: 90, marginLeft: -45 },
+  wrap: { position: 'absolute', bottom: '10%', width: 110, marginLeft: -55 },
   body: { alignItems: 'center', gap: 6 },
-  avatar: { width: 56, height: 56, borderRadius: 16 },
-  sprite: { width: 56, height: 56 },
+  // RunnerAvatarと同じく56→84(「思ったより遠い」フィードバックを受けて拡大)。
+  avatar: { width: 84, height: 84, borderRadius: 20 },
+  sprite: { width: 84, height: 84 },
   label: { color: colors.subtext, fontSize: 11 },
 });

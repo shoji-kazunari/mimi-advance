@@ -134,15 +134,15 @@ function LevelUpBurst() {
 }
 
 const styles = StyleSheet.create({
-  // ボスの表示枠(56×56、正方形)に合わせた。色付き図形フォールバック(avatar)は
-  // 従来サイズのままこの枠の中央に表示する。
-  wrap: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
-  avatar: { width: 40, height: 56, borderRadius: 20 },
-  sprite: { width: 56, height: 56 },
+  // ボスの表示枠(正方形)に合わせた。「思ったより遠い(小さい)」というフィードバックを受けて
+  // 56→84に拡大(トラック高さ220の約38%)。色付き図形フォールバック(avatar)も比率を保って拡大。
+  wrap: { width: 84, height: 84, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 60, height: 84, borderRadius: 30 },
+  sprite: { width: 84, height: 84 },
   burstWrap: {
     position: 'absolute',
-    width: 56,
-    height: 56,
+    width: 84,
+    height: 84,
     alignItems: 'center',
     justifyContent: 'center',
   },
