@@ -81,7 +81,11 @@ function Root() {
       )}
 
       {overlay?.name === 'characterDetail' && (
-        <CharacterDetailScreen defId={overlay.defId} onBack={() => setOverlay({ name: 'characters' })} />
+        <CharacterDetailScreen
+          defId={overlay.defId}
+          onBack={() => setOverlay({ name: 'characters' })}
+          onEvolved={() => setOverlay(null)}
+        />
       )}
 
       {overlay?.name === 'vsSelect' && (

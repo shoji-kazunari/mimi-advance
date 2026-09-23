@@ -14,11 +14,18 @@ import { colors, STAT_LABELS } from '../theme';
 interface Props {
   defId: string;
   onBack: () => void;
+  /**
+   * 進化成功時に呼ぶ。キャラ一覧・詳細のポップアップ(どちらもModal)は、進化完了
+   * ポップアップ(Notifications.tsx、こちらもModal)より後から開くため、react-native-webの
+   * ModalはDOM追加順(=後から開いた方が上)で重なり、開いたままだと完了ポップアップが
+   * 裏に隠れて見えなくなる。進化した瞬間は一覧・詳細ごと閉じて、隠れず見えるようにする。
+   */
+  onEvolved: () => void;
 }
 
 const COSTUME_STAGE_LABELS = ['どうぶつ', 'けもの脚', 'ヒト型'];
 
-export function CharacterDetailScreen({ defId, onBack }: Props) {
+export function CharacterDetailScreen({ defId, onBack, onEvolved }: Props) {
   const state = useGameStore((s) => s.state);
   const setActiveCharacter = useGameStore((s) => s.setActiveCharacter);
   const tryEvolve = useGameStore((s) => s.tryEvolve);
@@ -38,8 +45,8 @@ export function CharacterDetailScreen({ defId, onBack }: Props) {
   const handleEvolve = () => {
     if (!evolvable) return;
     tryEvolve(defId);
+    onEvolved();
     showPopup('進化', `${character.name} が進化しました！`);
-    setPreviewVisible(false);
   };
 
   return (
