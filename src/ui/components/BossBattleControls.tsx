@@ -56,7 +56,7 @@ export function BossBattleControls({
         </Pressable>
       ) : (
         <View style={[styles.actionButton, { backgroundColor: won ? colors.primary : colors.locked }]}>
-          <Text style={styles.actionButtonText} numberOfLines={1}>{won ? '勝利！' : '…'}</Text>
+          <Text style={styles.actionButtonText} numberOfLines={1}>…</Text>
         </View>
       )}
     </View>

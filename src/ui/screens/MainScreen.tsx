@@ -186,9 +186,11 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   useEffect(() => {
     if (!inBossBattle || !battlePlayback.finished || settledRef.current) return;
     settledRef.current = true;
+    // ボタンに「勝利！」と固定表示する代わりに、決着した瞬間トーストで知らせる。
+    if (battlePlayback.won) showToast('勝利！');
     const timer = setTimeout(() => handleBossSettledRef.current(battlePlayback.won), RESULT_HOLD_MS);
     return () => clearTimeout(timer);
-  }, [inBossBattle, battlePlayback.finished, battlePlayback.won]);
+  }, [inBossBattle, battlePlayback.finished, battlePlayback.won, showToast]);
 
   // 勝敗が決まった後の演出の段取り(仕様書6章): 退場(0.45秒)→[勝利のみ]中央バナー(1.2秒)
   // →黒ワイプ。ゲージ表示(BossBattleControls)はinBossBattleがtrueのままの間ずっと
