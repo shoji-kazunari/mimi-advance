@@ -24,7 +24,6 @@ export function useBattlePlayback(
 ) {
   const timeline: BattleTimeline = useMemo(() => simulateBattle(me, opponent), [me, opponent]);
   const [elapsed, setElapsed] = useState(0);
-  const [finished, setFinished] = useState(false);
   const startAtRef = useRef<number | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const attackIdxRef = useRef(0);
@@ -34,6 +33,17 @@ export function useBattlePlayback(
     onMyAttackRef.current = onMyAttack;
     onOpponentAttackRef.current = onOpponentAttack;
   });
+
+  // タイムラインが変わったら(新しいバトルが始まったら)再生位置をリセットする。
+  // レンダー中にsetStateする(Reactの「propが変わったときにstateをリセットする」パターン)のは、
+  // effectで行うと1フレーム遅れてしまい、前回のバトルの最終elapsed(=前回のendedAtMs)が
+  // 一瞬でも生き残って「新しいバトルが開始と同時に終了した」ように見えてしまうため
+  // (2戦目以降が自動スキップに見える不具合の原因だった)。
+  const [prevTimeline, setPrevTimeline] = useState(timeline);
+  if (timeline !== prevTimeline) {
+    setPrevTimeline(timeline);
+    setElapsed(0);
+  }
 
   // タイムラインが変わったら(新しいバトルが始まったら)アタック検知のカーソルもリセットする。
   useEffect(() => {
@@ -59,7 +69,6 @@ export function useBattlePlayback(
       const next = now - startAtRef.current;
       if (next >= timeline.outcome.endedAtMs) {
         setElapsed(timeline.outcome.endedAtMs);
-        setFinished(true);
         rafIdRef.current = null;
         return;
       }
@@ -79,12 +88,13 @@ export function useBattlePlayback(
       rafIdRef.current = null;
     }
     setElapsed(timeline.outcome.endedAtMs);
-    setFinished(true);
   };
 
   const frame = staminaAtTime(timeline, elapsed);
   const sprinting = elapsed < me.sprintDurationMs;
   const won = timeline.outcome.winner === 'me';
+  // 別stateにせず毎回elapsedから導出することで、上記の「前回の値が残る」問題自体を構造的に防ぐ。
+  const finished = elapsed >= timeline.outcome.endedAtMs;
 
   return { timeline, frame, elapsed, finished, skip, sprinting, won };
 }
