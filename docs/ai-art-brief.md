@@ -1,16 +1,14 @@
 # AI画像生成用 指示書(下絵・試作版)
 
-ChatGPT(画像生成)にそのまま貼り付けて使う想定。まず「共通スタイル」を1回貼ってから、
-各キャラ/ボスのプロンプトを1体ずつ生成していく(1回の会話内で続けて生成すると
-スタイルが揃いやすい)。
+ChatGPT(画像生成)の新しい会話に、下のメッセージを順番にそのまま貼って送ってください。
+3つとも同じ会話の中で続けて送るのがポイントです(絵柄が揃いやすくなります)。
 
-今回はあくまで「仮の一式」の試作。走り/ジャンプ/アタックの3ポーズ×進化段階ぶんの
-本番セットではなく、まずは1体につき1枚(立ち・走り中間ポーズ)だけ作って、
-実際にアプリに入れて雰囲気を見る。
+今回はあくまで「仮の一式」の試作(1体につき1枚だけ)。本番用の走り/ジャンプ/アタックの
+ポーズ差分は、この試作の雰囲気を見てから改めて進めます。
 
 ---
 
-## 共通スタイル(最初に貼る)
+## 1通目(最初に送る)
 
 ```
 Style guide for a set of mobile game character illustrations (keep this consistent across every image I ask for next):
@@ -24,23 +22,21 @@ Style guide for a set of mobile game character illustrations (keep this consiste
 - No text, no logos, no watermarks
 ```
 
----
-
-## 1. ミミ(自キャラ、初期状態「どうぶつ」形態)
+## 2通目(同じ会話で続けて送る。ミミの絵)
 
 ```
 Using the style guide above, illustrate "Mimi": a small pink rabbit-like mascot creature, main color #ff5d9e (bright pink), lighter pink or cream belly/muzzle accent, big round dark eyes, cheerful expression, two long pink ears standing up. Square canvas 1024x1024, transparent background, running pose facing right.
 ```
 
-## 2. ボス(汎用、1種類目)
+## 3通目(同じ会話で続けて送る。ボスの絵)
 
 ```
 Using the style guide above, illustrate a "Boss" rival creature for the same game: a slightly bigger and bulkier rival mascot than Mimi, main color #ff9d3d (orange), same cute-but-slightly-more-intimidating mascot style, still rounded and friendly-looking (not scary), two ears in a different shape than Mimi's (e.g. shorter and rounder) to read as a different character at a glance. Square canvas 1024x1024, transparent background, running pose facing right.
 ```
 
-## 3. (任意)スズ(2体目の解放キャラ、「どうぶつ」形態)
+---
 
-まずは上の2枚で雰囲気を確認してから、必要なら追加で。
+## (任意)4通目: スズの絵がほしくなったら
 
 ```
 Using the style guide above, illustrate "Suzu": a small mascot creature companion to Mimi, cool-toned main color (e.g. pale blue or silver #9fd8ff), same cute mascot style and proportions as Mimi but a distinct ear shape/pattern so the two are easy to tell apart at a glance. Square canvas 1024x1024, transparent background, running pose facing right.
@@ -50,11 +46,9 @@ Using the style guide above, illustrate "Suzu": a small mascot creature companio
 
 ## 出来上がったら
 
-PNGファイル(背景透過)をそのまま渡してください。私の方で:
+PNGファイル(背景透過)をそのまま渡してください。こちらで以下を行い、動いているところをお見せします。
 
 1. 正方形の絵に合わせて表示ボックスを調整
-2. `RunnerAvatar` / `OpponentEntity`(/ 一覧・進化画面のアイコン)を、今の色付き図形から
-   実際の画像に差し替え
+2. `RunnerAvatar` / `OpponentEntity`(一覧・進化画面のアイコンも兼用)を、
+   今の色付き図形から実際の画像に差し替え
 3. 実機(ブラウザ)で動かして見た目を確認、Artifactに反映
-
-の順で一式差し替えて、実際に動いているところをお見せします。
