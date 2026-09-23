@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { colors } from '../../theme';
+import { Animated, Easing, Image, Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 /**
  * 「耳アド UI手触り仕様書」7章。地面(手前のレーン線)と遠景(奥の模様)を別レイヤーでスクロールする。
@@ -53,10 +52,12 @@ function useNativeScrollLoop(periodMs: number) {
 
 const GROUND_LOOP_MS = 150;
 const FAR_LOOP_MS = 10000;
-
-const GROUND_DASHES = Array.from({ length: 24 }, (_, i) => i);
-const FAR_BLOBS = Array.from({ length: 10 }, (_, i) => i);
 const IS_WEB = Platform.OS === 'web';
+
+// AI下絵(シームレスにタイル可能な横長画像)。resizeMode="repeat"で、パターン1つ分の
+// 幅(=画面の実横幅、200%レイヤーの50%)いっぱいに自然なタイルサイズで繰り返し描画する。
+const FAR_IMAGE = require('../../../../assets/backgrounds/far.png');
+const GROUND_IMAGE = require('../../../../assets/backgrounds/ground.png');
 
 export function TrackBackground() {
   ensureScrollKeyframes();
@@ -72,20 +73,12 @@ export function TrackBackground() {
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Layer style={[styles.farLayer, farAnimatedStyle]}>
         {[0, 1].map((set) => (
-          <View key={set} style={styles.patternSet}>
-            {FAR_BLOBS.map((i) => (
-              <View key={i} style={styles.farBlob} />
-            ))}
-          </View>
+          <Image key={set} source={FAR_IMAGE} resizeMode="repeat" style={styles.patternImage} />
         ))}
       </Layer>
       <Layer style={[styles.groundLayer, groundAnimatedStyle]}>
         {[0, 1].map((set) => (
-          <View key={set} style={styles.patternSet}>
-            {GROUND_DASHES.map((i) => (
-              <View key={i} style={styles.groundDash} />
-            ))}
-          </View>
+          <Image key={set} source={GROUND_IMAGE} resizeMode="repeat" style={styles.patternImage} />
         ))}
       </Layer>
     </View>
@@ -93,38 +86,24 @@ export function TrackBackground() {
 }
 
 const styles = StyleSheet.create({
+  // プレースホルダー時代の24px/4pxでは実素材を入れる余地が無かったため、絵に合わせて広げた。
   farLayer: {
     position: 'absolute',
-    top: '18%',
+    top: '6%',
     width: '200%',
-    height: 24,
+    height: 80,
     flexDirection: 'row',
-    opacity: 0.4,
-  },
-  patternSet: {
-    width: '50%',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  farBlob: {
-    width: 22,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.border,
+    opacity: 0.5,
   },
   groundLayer: {
     position: 'absolute',
     bottom: '10%',
     width: '200%',
-    height: 4,
+    height: 44,
     flexDirection: 'row',
   },
-  groundDash: {
-    width: 14,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    marginHorizontal: 8,
+  patternImage: {
+    width: '50%',
+    height: '100%',
   },
 });
