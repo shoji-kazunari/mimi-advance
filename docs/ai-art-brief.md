@@ -163,17 +163,19 @@ Same Boss as above, same style and colors. Pose: attack follow-through/recovery 
 地面のラインはそのまま基準に保ちます)。なので下のプロンプトは、実際の表示より
 余裕を持たせたサイズで作ってもらう指示にしています。
 
-### 20通目: 遠景タイル
+### まとめて1通で依頼する場合
 
 ```
-A seamless horizontally-tileable background strip for a mobile runner game, depicting a soft, distant skyline silhouette (rolling hills or a faint distant cityscape), very simple flat silhouette shapes with no fine detail (it will be shown small and semi-transparent in the final game). Muted dark purple tones (around #3a2c66 on a transparent or dark background). Wide horizontal canvas, 1536x256px. The left edge and right edge of the image must match up perfectly so the image can be tiled side by side with itself with no visible seam. No text, no characters, no ground line.
+I need two separate seamless, horizontally-tileable background strip images for a mobile runner game. Please generate both:
+
+1) Far background layer: a soft, distant skyline silhouette (rolling hills or a faint distant cityscape), very simple flat silhouette shapes with no fine detail (it will be shown small and semi-transparent in the final game). Muted dark purple tones (around #3a2c66) on a transparent or dark background. Wide horizontal canvas, 1536x256px. The left edge and right edge must match up perfectly so it can be tiled side by side with itself with no visible seam. No text, no characters, no ground line.
+
+2) Ground/track layer: a simple flat road or path surface viewed from the side, with subtle texture, plus evenly spaced short dashed lane-marking lines along it. Dark purple tones (around #3a2c66) on a transparent or dark background, flat vector style. Wide horizontal canvas, 1536x128px. The left edge and right edge must match up perfectly so it can be tiled side by side with itself with no visible seam. No text, no characters.
 ```
 
-### 21通目: 地面タイル
-
-```
-A seamless horizontally-tileable ground/track texture strip for a mobile runner game, viewed from the side: a simple flat road or path surface with subtle texture, plus evenly spaced short dashed lane-marking lines along it. Dark purple tones (around #3a2c66) on a transparent or dark background, flat vector style. Wide horizontal canvas, 1536x128px. The left edge and right edge of the image must match up perfectly so the image can be tiled side by side with itself with no visible seam. No text, no characters.
-```
+1通にまとめると絵の系統が微妙に揃わないことがあります。もし遠景と地面の雰囲気が
+バラバラに出てしまったら、上の2つを別メッセージに分けて(1通目→遠景、2通目→
+「同じ雰囲気で地面も」と続ける)作り直すときれいに揃いやすいです。
 
 seamless(継ぎ目なしタイル)の指示はAIが完璧に守れないことも多いです。左右の端が
 微妙に合っていなくても、届けてもらえれば確認します(必要なら作り直しをお願いします)。
