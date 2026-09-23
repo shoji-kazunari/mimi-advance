@@ -512,8 +512,18 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                 <Text style={styles.helpItem}>ランナーpt: ザコを追い抜くと入る。ステータス育成に使う。</Text>
                 <Text style={styles.helpItem}>Vicマネー: ボス撃破やVSレース勝利で入る。シューズ・新キャラ解放に使う。</Text>
                 <Text style={styles.helpItem}>キャラLv.: 自キャラのステータス合計(シューズ倍率込み)。</Text>
+                <Text style={styles.helpItem}>総合Lv.: キャラLv.と仲間Lv.を合わせた値。バトルでの強さに直結する。</Text>
                 <Text style={styles.helpItem}>仲間Lv.: 操作していない仲間キャラのステータスの10%を合算したもの。</Text>
+                <Text style={styles.helpItem}>スピード: バトル中、相手にプレッシャーをかけて相手の消耗を早める。自分の消費には影響しない。</Text>
+                <Text style={styles.helpItem}>スタミナ: バトルでの自分の最大スタミナ量。</Text>
+                <Text style={styles.helpItem}>ガッツ: バトルで全力疾走を維持できる時間。ステージ到達時間もわずかに短縮する。</Text>
+                <Text style={styles.helpItem}>テクニック(進化2で解放): 追い抜きの獲得ptを増やし、障害物によるスタミナ消費を軽減する。</Text>
+                <Text style={styles.helpItem}>アタック(進化3で解放): バトル中、一定のタイミングで相手に追加ダメージを与える「アタック」が発動するようになる。</Text>
+                <Text style={styles.helpItem}>シューズ: Vicマネーで解放・強化できる装備。全ステータスに微量の倍率をかける。キャラごとに別管理。</Text>
                 <Text style={styles.helpItem}>進化: キャラLv.が条件を満たすと行える。新しいステータスが解放される。</Text>
+                <Text style={styles.helpItem}>着せ替え: これまでに到達した進化段階の見た目に、いつでも切り替えて表示できる。ステータスには影響しない。</Text>
+                <Text style={styles.helpItem}>VSレース: ステージ100で解放。総合Lv.が近い他ユーザーと非同期で対戦し、勝つとVicマネーを獲得できる。1日5回まで。</Text>
+                <Text style={styles.helpItem}>ランキング: 全ランナー中のステージ進行度ランキング。</Text>
               </ScrollView>
               <Pressable style={styles.modalSave} onPress={() => setHelpVisible(false)}>
                 <Text style={styles.modalSaveText}>閉じる</Text>
