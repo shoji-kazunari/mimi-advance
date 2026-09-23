@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   popupLayer: {
     position: 'absolute',
     top: '38%',
-    left: '16%',
+    left: '20%',
     marginLeft: -20,
     width: 40,
     alignItems: 'center',

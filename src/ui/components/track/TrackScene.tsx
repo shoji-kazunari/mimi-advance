@@ -67,7 +67,7 @@ type Props = IdleProps | BattleProps;
 
 let zakoIdSeq = 0;
 let obstacleIdSeq = 0;
-const RUNNER_LEFT_PERCENT = 16;
+const RUNNER_LEFT_PERCENT = 20;
 const OPPONENT_LEFT_PERCENT = 78;
 // ボスがスタミナ0で自キャラに「完全に重なる」ときの位置(仕様書5章)。
 // キャラがボスに追いついて追い抜く瞬間だとひと目でわかるよう、隣接ではなく
