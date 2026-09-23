@@ -69,8 +69,10 @@ let zakoIdSeq = 0;
 let obstacleIdSeq = 0;
 const RUNNER_LEFT_PERCENT = 12;
 const OPPONENT_LEFT_PERCENT = 78;
-// ボスがスタミナ0で自キャラに「完全に隣接」したときの位置(仕様書5章)。
-const OPPONENT_ADJACENT_PERCENT = RUNNER_LEFT_PERCENT + 10;
+// ボスがスタミナ0で自キャラに「完全に重なる」ときの位置(仕様書5章)。
+// キャラがボスに追いついて追い抜く瞬間だとひと目でわかるよう、隣接ではなく
+// 自キャラと同じ位置まで詰め寄らせる(レイヤーはキャラが上、下記JSXの描画順を参照)。
+const OPPONENT_ADJACENT_PERCENT = RUNNER_LEFT_PERCENT;
 const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
 const EMPTY_PERCENTS: number[] = [];
@@ -208,16 +210,8 @@ export function TrackScene(props: Props) {
             onExit={() => setZakoList((prev) => prev.filter((x) => x.id !== z.id))}
           />
         ))}
-      <Animated.View style={[styles.runnerWrap, { left: runnerLeft }]} pointerEvents="none">
-        <RunnerAvatar
-          burstTrigger={burstTrigger}
-          jump={props.mode === 'battle' ? runnerJump : undefined}
-          spriteSet={props.runnerSpriteSet}
-          elapsedMs={battleElapsed}
-          jumpTimesMs={runnerJumpTimes}
-          attackTimesMs={meAttackTimesMs}
-        />
-      </Animated.View>
+      {/* ボスはキャラより先に(=下のレイヤーに)描画する。勝利演出で完全に重なったとき、
+          自キャラがボスの手前を通り過ぎたように見せるため。 */}
       {props.mode === 'idle' ? (
         bossReady && <OpponentEntity label="BOSS" slideIn spriteSet={BOSS_SPRITES} />
       ) : (
@@ -242,6 +236,16 @@ export function TrackScene(props: Props) {
           ))}
         </>
       )}
+      <Animated.View style={[styles.runnerWrap, { left: runnerLeft }]} pointerEvents="none">
+        <RunnerAvatar
+          burstTrigger={burstTrigger}
+          jump={props.mode === 'battle' ? runnerJump : undefined}
+          spriteSet={props.runnerSpriteSet}
+          elapsedMs={battleElapsed}
+          jumpTimesMs={runnerJumpTimes}
+          attackTimesMs={meAttackTimesMs}
+        />
+      </Animated.View>
     </View>
   );
 }
