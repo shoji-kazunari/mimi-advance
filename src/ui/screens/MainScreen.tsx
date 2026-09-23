@@ -668,12 +668,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   // 自キャラの頭上に小さく浮かぶポップテキスト用のレイヤー。RunnerAvatarの位置
-  // (TrackScene内、left:12%・top:50%)のすぐ上に置く(浮動距離が短い間隔しかないと
+  // (TrackScene内のRUNNER_LEFT_PERCENT・top:50%)のすぐ上に置く(浮動距離が短い間隔しかないと
   // トラック上端まで飛んでいるように見えてしまうため、頭のすぐ上に余裕を持たせる)。
   popupLayer: {
     position: 'absolute',
     top: '38%',
-    left: '12%',
+    left: '16%',
     marginLeft: -20,
     width: 40,
     alignItems: 'center',

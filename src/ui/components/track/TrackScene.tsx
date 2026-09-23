@@ -67,7 +67,7 @@ type Props = IdleProps | BattleProps;
 
 let zakoIdSeq = 0;
 let obstacleIdSeq = 0;
-const RUNNER_LEFT_PERCENT = 12;
+const RUNNER_LEFT_PERCENT = 16;
 const OPPONENT_LEFT_PERCENT = 78;
 // ボスがスタミナ0で自キャラに「完全に重なる」ときの位置(仕様書5章)。
 // キャラがボスに追いついて追い抜く瞬間だとひと目でわかるよう、隣接ではなく
@@ -78,7 +78,8 @@ const EMPTY_JUMPS: number[] = [];
 const EMPTY_PERCENTS: number[] = [];
 
 // 障害物は右から左へトラック全体を横切る(ザコと同じ動き)。ボスの位置を先に通り、
-// そのあと自キャラの位置(12%)を通る。自キャラの位置は動かないのでMS_TO_RUNNERは定数。
+// そのあと自キャラの位置(RUNNER_LEFT_PERCENT)を通る。自キャラの位置は動かないので
+// MS_TO_RUNNERは定数。
 const MS_TO_RUNNER = obstacleTravelMsTo(RUNNER_LEFT_PERCENT);
 
 /**
