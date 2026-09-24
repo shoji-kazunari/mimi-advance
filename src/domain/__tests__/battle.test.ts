@@ -6,17 +6,27 @@ describe('selfCombatantProfile', () => {
     const profile = selfCombatantProfile(baseStats(), 0);
     expect(profile.attackUnlocked).toBe(false);
     expect(profile.skillBonus).toBe(0);
-    // technique未解放・ガッツ(常時有効)はLv.1なのでobstacleLoss = max(1, 4 - 0*0.4 - 1*0.15) = 3.85
-    expect(profile.obstacleLoss).toBeCloseTo(3.85);
+    // technique未解放なのでobstacleLoss = max(1, 4 - 0*0.4) = 4
+    expect(profile.obstacleLoss).toBe(4);
   });
 
   it('進化2では全ステータスが効く', () => {
     const profile = selfCombatantProfile(baseStats(), 2);
     expect(profile.attackUnlocked).toBe(true);
     expect(profile.skillBonus).toBe(4 + 1 * 2);
-    expect(profile.obstacleLoss).toBeCloseTo(4 - 0.4 - 0.15);
+    expect(profile.obstacleLoss).toBeCloseTo(4 - 0.4);
     expect(profile.maxStamina).toBe(50 + 1 * 20);
     expect(profile.sprintDurationMs).toBe(1600);
+  });
+
+  it('ガッツが上がるほどスプリントの消費レートが下がる(巡航ペースが下限)', () => {
+    // スプリントを延ばすほど高負荷な時間が延びるだけ、という一方的な不利にならないよう、
+    // ガッツ自身が延ばしているスプリントの消費レートを下げる(テクニックの役割=障害物
+    // ダメージ軽減とは被らない)。
+    const low = selfCombatantProfile({ speed: 1, stamina: 1, guts: 1, technique: 1, damage: 1 }, 2);
+    const high = selfCombatantProfile({ speed: 1, stamina: 1, guts: 20, technique: 1, damage: 1 }, 2);
+    expect(high.sprintDrainPerSec).toBeLessThan(low.sprintDrainPerSec);
+    expect(high.sprintDrainPerSec).toBeGreaterThanOrEqual(high.cruiseDrainPerSec);
   });
 });
 
@@ -61,15 +71,14 @@ describe('simulateBattle', () => {
     expect(result.outcome.winner).toBe('me');
   });
 
-  it('自分の消費が早すぎるビルドだと格下ボスにも負ける', () => {
-    // ガッツを盛って全力疾走(6/秒)を引き延ばしても、スタミナが低ければ
-    // maxStamina(50+stamina*20)に対して消費が追いつかず先に力尽きる。
+  it('スタミナを育てないまま進むと、いずれ格下に感じるステージでも負ける', () => {
+    // 進化0(technique未解放)・スタミナLv.1のまま(=育成が完全に追いついていない)だと、
+    // ボスの圧力(stageに比例)がまだ小さい段階でも力尽きるようになる。
     const badBuildMe = selfCombatantProfile(
-      { speed: 1, stamina: 1, guts: 10, technique: 1, damage: 1 },
+      { speed: 1, stamina: 1, guts: 1, technique: 1, damage: 1 },
       0
     );
-    const easyBoss = bossCombatantProfile(1);
-    const result = simulateBattle(badBuildMe, easyBoss);
+    const result = simulateBattle(badBuildMe, bossCombatantProfile(15));
     expect(result.outcome.winner).toBe('opponent');
   });
 

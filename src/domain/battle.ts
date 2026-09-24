@@ -61,12 +61,13 @@ export function selfCombatantProfile(
   return {
     maxStamina: 50 + staminaEff * 20,
     sprintDurationMs: Math.min(11000, Math.round(gutsEff * 1600)),
-    sprintDrainPerSec: SPRINT_DRAIN_PER_SEC,
+    // ガッツはスプリント延長で消費が増える一方だった(延ばすほど高消費な6/秒の時間が
+    // 延びるだけで、相殺する効果が無かった)。障害物ダメージ軽減はテクニックの役割と
+    // 被るため、ガッツ自身が伸ばしている「スプリントの消費レート」自体を下げる形にした
+    // (延長した分は、その分効率も上がる)。巡航ペース(3/秒)まで下がったら頭打ち。
+    sprintDrainPerSec: Math.max(CRUISE_DRAIN_PER_SEC, SPRINT_DRAIN_PER_SEC - gutsEff * 0.44),
     cruiseDrainPerSec: CRUISE_DRAIN_PER_SEC,
-    // ガッツはスプリント延長で消費が増える一方だったため(延ばすほど高消費な6/秒の時間が
-    // 延びるだけで、相殺する効果が無かった)、障害物ダメージ軽減にもわずかに効かせて
-    // 「ガッツを上げるとほぼ損」という状態を避ける。
-    obstacleLoss: Math.max(1, 4 - techniqueEff * 0.4 - gutsEff * 0.15),
+    obstacleLoss: Math.max(1, 4 - techniqueEff * 0.4),
     attackUnlocked,
     skillBonus: attackUnlocked ? 4 + damageEff * 2 : 0,
     pressureToOpponentPerSec: speedPressure(speedEff),

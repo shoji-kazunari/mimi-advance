@@ -125,13 +125,14 @@ const STAT_COST_CONFIG = {
 ```
 meMax = 50 + stamina効実値 × 20
 sprintDurationMs = min(11000, round(guts効実値 × 1600))   // 全力疾走の持続時間
-sprintDrainPerSec = 6      // 固定。スピードの影響なし
+sprintDrainPerSec = max(cruiseDrainPerSec, 6 - guts効実値 × 0.44)  // ガッツが上がるほど巡航ペースに近づく
 cruiseDrainPerSec = 3      // 全力疾走後のペースダウン
-obstacleLoss = max(1, 4 - technique効実値 × 0.4 - guts効実値 × 0.15)  // 障害物は必ず回避するが微量減る
+obstacleLoss = max(1, 4 - technique効実値 × 0.4)  // 障害物は必ず回避するが微量減る
 ```
-- `obstacleLoss`のガッツ項は後から追加(バランス見直し)。ガッツはスプリント延長で消費が
-  増える一方(高消費な6/秒の時間が延びるだけ)で相殺する効果が無かったため、障害物ダメージ
-  軽減にもわずかに効かせている。
+- `sprintDrainPerSec`のガッツ項は後から追加(バランス見直し)。元々ガッツはスプリント延長
+  (=高消費な6/秒の時間が延びる)だけで、上げるほど純粋に損になっていた。障害物ダメージ
+  軽減はテクニックの役割と被るため、ガッツ自身が延ばしている「スプリントの消費レート」
+  自体を下げる形にした(延ばした分、効率も上がる。巡航ペースが下限)。
 
 ### スタミナ計算式(相手側=ボス)
 ```
