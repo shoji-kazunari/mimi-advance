@@ -2,7 +2,7 @@ import { CharacterStats, EvolutionStage, OwnedCharacter, StatKey, STAT_KEYS } fr
 
 /** 仕様書3章。育成コスト(ランナーpt消費、+0.1刻み)。 */
 export const STAT_COST_CONFIG: Record<StatKey, { base: number; growth: number }> = {
-  speed: { base: 6, growth: 1.05 },
+  speed: { base: 6, growth: 1.04 },
   technique: { base: 4, growth: 1.035 },
   stamina: { base: 3, growth: 1.02 },
   guts: { base: 3, growth: 1.02 },
