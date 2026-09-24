@@ -1,3 +1,4 @@
+import { formatJP } from '../format';
 import { colors, STAT_COLORS, STAT_LABELS } from '../theme';
 import { TrainingCard } from './TrainingCard';
 
@@ -18,7 +19,7 @@ export function StatCard({ statKey, level, cost, locked, lockedHint, atCap, runn
   const affordable = cost !== null && runnerPt >= cost;
   const disabled = locked || atCap || !affordable;
 
-  const buttonLabel = locked ? lockedHint ?? 'ロック中' : atCap ? '上限' : `${cost?.toLocaleString()}pt`;
+  const buttonLabel = locked ? lockedHint ?? 'ロック中' : atCap ? '上限' : `${cost !== null ? formatJP(cost) : ''}pt`;
 
   return (
     <TrainingCard

@@ -8,6 +8,7 @@ import { SHOE_UNLOCK_COST } from '../../domain/shoes';
 import { STAT_KEYS } from '../../domain/types';
 import { useGameStore } from '../../state/gameStore';
 import { useActiveCharacter } from '../../state/selectors';
+import { formatJP } from '../format';
 import { useBattlePlayback } from '../hooks/useBattlePlayback';
 import { useShake } from '../hooks/useShake';
 import { useNotifications } from '../Notifications';
@@ -400,11 +401,11 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
             <View style={styles.walletRow}>
               <View style={styles.walletChip}>
                 <Text style={styles.walletLabel}>ランナーpt</Text>
-                <Text style={styles.walletValue}>{Math.floor(state.runnerPt).toLocaleString()}</Text>
+                <Text style={styles.walletValue}>{formatJP(Math.floor(state.runnerPt))}</Text>
               </View>
               <View style={styles.walletChip}>
                 <Text style={styles.walletLabel}>Vicマネー</Text>
-                <Text style={styles.walletValue}>{Math.floor(state.vicMoney).toLocaleString()}</Text>
+                <Text style={styles.walletValue}>{formatJP(Math.floor(state.vicMoney))}</Text>
               </View>
             </View>
           </View>

@@ -1,4 +1,5 @@
 import { shoeCostFor, SHOE_UNLOCK_COST } from '../../domain/shoes';
+import { formatJP } from '../format';
 import { colors, STAT_COLORS } from '../theme';
 import { TrainingCard } from './TrainingCard';
 
@@ -20,7 +21,7 @@ export function ShoeCard({ shoeUnlocked, shoeLevel, vicMoney, onUnlock, onUpgrad
         label="シューズ"
         value="未解放"
         valueColor={colors.gold}
-        buttonLabel={`${SHOE_UNLOCK_COST.toLocaleString()}Vicで解放`}
+        buttonLabel={`${formatJP(SHOE_UNLOCK_COST)}Vicで解放`}
         disabled={vicMoney < SHOE_UNLOCK_COST}
         onPress={onUnlock}
       />
@@ -33,7 +34,7 @@ export function ShoeCard({ shoeUnlocked, shoeLevel, vicMoney, onUnlock, onUpgrad
       color={color}
       label="シューズ"
       value={`Lv.${shoeLevel.toFixed(1)}`}
-      buttonLabel={`${cost.toLocaleString()}Vic`}
+      buttonLabel={`${formatJP(cost)}Vic`}
       disabled={vicMoney < cost}
       onPress={onUpgrade}
     />
