@@ -127,15 +127,25 @@ meMax = 50 + stamina効実値 × 20
 sprintDurationMs = min(11000, round(guts効実値 × 1600))   // 全力疾走の持続時間
 sprintDrainPerSec = 6      // 固定。スピードの影響なし
 cruiseDrainPerSec = 3      // 全力疾走後のペースダウン
-obstacleLoss = max(1, 4 - technique効実値 × 0.4)  // 障害物は必ず回避するが微量減る
+obstacleLoss = max(1, 4 - technique効実値 × 0.4 - guts効実値 × 0.15)  // 障害物は必ず回避するが微量減る
 ```
+- `obstacleLoss`のガッツ項は後から追加(バランス見直し)。ガッツはスプリント延長で消費が
+  増える一方(高消費な6/秒の時間が延びるだけ)で相殺する効果が無かったため、障害物ダメージ
+  軽減にもわずかに効かせている。
 
 ### スタミナ計算式(相手側=ボス)
 ```
 bossMax = 60 + (ステージ-1) × 10
 speedPressure = max(0, speed効実値-1) × 1.2
 bossDrainPerSec = 5 + (ステージ-1) × 0.8 + speedPressure
+bossPressurePerSec = (ステージ-1) × 0.09   // 自分側のmeDrainRateに加算される
 ```
+- `bossPressurePerSec`は後から追加(バランス見直し)。元々ボスは`attackUnlocked = false`・
+  自分への圧力0固定で、自分に一切ダメージを与えられなかった。`bossMax`/`bossDrainPerSec`は
+  比率がほぼ一定なため「ボスはどのステージでもだいたい12〜12.5秒で自滅する」だけで、
+  自分側の消費はステータスのみで決まりステージに依存せず、一定ラインを超えると
+  以降どのステージでも難易度が変わらなくなっていた。ステージに比例した圧力を追加し、
+  育成を続ける意味を保っている。ステージ1では0(初回のボス戦の手触りは変えていない)。
 
 ### アタック(旧称「必殺技」、この名称は使わない)
 - `skillBonus = attackUnlocked ? (4 + damage効実値 × 2) : 0`

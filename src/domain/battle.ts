@@ -30,6 +30,22 @@ function speedPressure(speedEffective: number): number {
   return Math.max(0, speedEffective - 1) * 1.2;
 }
 
+/**
+ * ボスから自分への圧力(仕様書5章のバランス見直し)。
+ * 元の式ではボスはattackUnlocked=false・pressureToOpponentPerSec=0固定で、自分に一切
+ * ダメージを与えられなかった。maxStamina/消費速度をステージに比例して伸ばしても、両者の
+ * 比率がほぼ一定なため「ボスはどのステージでもだいたい12〜12.5秒で自滅する」だけで、
+ * 自分側の消費(=自分のステータスのみで決まる)はステージに一切依存しなかった。
+ * つまり一定ライン(約12.5秒生存)さえ超えれば、それ以降は何ステージ進んでも
+ * 難易度が変わらず、育成を続ける意味が薄れていた。
+ * ここでステージに比例した圧力を自分側の消費に足すことで、ステージが上がるほど
+ * 自分の消費ペースも上がり、育成でそれに追いつき続ける必要がある形にする。
+ * stage=1では0(初回のボス戦の手触りは変えない)。
+ */
+function bossPressurePerSec(stage: number): number {
+  return (stage - 1) * 0.09;
+}
+
 /** 仕様書5章「スタミナ計算式(自分側)」。プレイヤーキャラ、VSレースの相手キャラの両方に使う。 */
 export function selfCombatantProfile(
   stats: CharacterStats,
@@ -47,7 +63,10 @@ export function selfCombatantProfile(
     sprintDurationMs: Math.min(11000, Math.round(gutsEff * 1600)),
     sprintDrainPerSec: SPRINT_DRAIN_PER_SEC,
     cruiseDrainPerSec: CRUISE_DRAIN_PER_SEC,
-    obstacleLoss: Math.max(1, 4 - techniqueEff * 0.4),
+    // ガッツはスプリント延長で消費が増える一方だったため(延ばすほど高消費な6/秒の時間が
+    // 延びるだけで、相殺する効果が無かった)、障害物ダメージ軽減にもわずかに効かせて
+    // 「ガッツを上げるとほぼ損」という状態を避ける。
+    obstacleLoss: Math.max(1, 4 - techniqueEff * 0.4 - gutsEff * 0.15),
     attackUnlocked,
     skillBonus: attackUnlocked ? 4 + damageEff * 2 : 0,
     pressureToOpponentPerSec: speedPressure(speedEff),
@@ -58,6 +77,8 @@ export function selfCombatantProfile(
  * 仕様書5章「スタミナ計算式(相手側=ボス)」。
  * 自分の速度によるプレッシャーはここでは含めない。simulateBattle側で
  * 「相手(自分)のpressureToOpponentPerSecをボスの消費レートに足す」形で処理される。
+ * ボス自身のmaxStamina/消費速度は比率がほぼ一定(約12〜12.5秒で自滅)なため、
+ * 自分側への脅威はbossPressurePerSec(ステージに比例)だけで持たせている。
  */
 export function bossCombatantProfile(stage: number): CombatantProfile {
   const baseDrain = 5 + (stage - 1) * 0.8;
@@ -69,7 +90,7 @@ export function bossCombatantProfile(stage: number): CombatantProfile {
     obstacleLoss: 0,
     attackUnlocked: false,
     skillBonus: 0,
-    pressureToOpponentPerSec: 0,
+    pressureToOpponentPerSec: bossPressurePerSec(stage),
   };
 }
 
