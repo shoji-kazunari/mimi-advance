@@ -71,8 +71,10 @@ function timeToBossSec(stage) {
 
 ```js
 const STAT_COST_CONFIG = {
-  speed:     { base: 6, growth: 1.04 },  // 一番重い(ノーリスクで強いため)。旧1.05はLv30で
-                                          // 約8,376,218ptに達し他ステータスと比べ跳ね上がりすぎたため引き下げ(Lv30で約522,179pt)
+  speed:     { base: 6, growth: 1.022 }, // 一番重い(ノーリスクで強いため)。base比の2倍相当を基準に、
+                                          // レベルが上がるほど少しずつ差が開く程度に抑えている
+                                          // (Lv30でスタミナ比x8.3、Lv60でx35.8。旧growth1.04はLv30でx557.9
+                                          // まで開き、同じLv表示なのに桁が違いすぎると指摘されたため再調整)
   technique: { base: 4, growth: 1.035 }, // 二役持つのでやや重め
   stamina:   { base: 3, growth: 1.02 },
   guts:      { base: 3, growth: 1.02 },
