@@ -71,11 +71,12 @@ function timeToBossSec(stage) {
 
 ```js
 const STAT_COST_CONFIG = {
-  speed:     { base: 6, growth: 1.022 }, // 一番重い(ノーリスクで強いため)。base比の2倍相当を基準に、
-                                          // レベルが上がるほど少しずつ差が開く程度に抑えている
-                                          // (Lv30でスタミナ比x8.3、Lv60でx35.8。旧growth1.04はLv30でx557.9
-                                          // まで開き、同じLv表示なのに桁が違いすぎると指摘されたため再調整)
-  technique: { base: 4, growth: 1.035 }, // 二役持つのでやや重め
+  // 5ステータスとも完全に同一。以前はスピード/テクニックだけ割高にしていたが、
+  // 同じLv表示なのにコストが桁違いになり(例: Lv30でスピードがスタミナの558倍)、
+  // 実機で見ると壊れて見えるという指摘があったため撤廃。ステータス間の強さの差は
+  // コストではなく各効果の係数(battle.tsのbossPressurePerSecなど)側で調整する方針にした。
+  speed:     { base: 3, growth: 1.02 },
+  technique: { base: 3, growth: 1.02 },
   stamina:   { base: 3, growth: 1.02 },
   guts:      { base: 3, growth: 1.02 },
   damage:    { base: 3, growth: 1.02 }
@@ -142,7 +143,7 @@ obstacleLoss = max(1, 4 - technique効実値 × 0.4)  // 障害物は必ず回�
 bossMax = 60 + (ステージ-1) × 10
 speedPressure = max(0, speed効実値-1) × 1.2
 bossDrainPerSec = 5 + (ステージ-1) × 0.8 + speedPressure
-bossPressurePerSec = (ステージ-1) × 0.09   // 自分側のmeDrainRateに加算される
+bossPressurePerSec = (ステージ-1) × 0.4   // 自分側のmeDrainRateに加算される
 ```
 - `bossPressurePerSec`は後から追加(バランス見直し)。元々ボスは`attackUnlocked = false`・
   自分への圧力0固定で、自分に一切ダメージを与えられなかった。`bossMax`/`bossDrainPerSec`は
@@ -150,6 +151,15 @@ bossPressurePerSec = (ステージ-1) × 0.09   // 自分側のmeDrainRateに加
   自分側の消費はステータスのみで決まりステージに依存せず、一定ラインを超えると
   以降どのステージでも難易度が変わらなくなっていた。ステージに比例した圧力を追加し、
   育成を続ける意味を保っている。ステージ1では0(初回のボス戦の手触りは変えていない)。
+- 係数は導入時0.09だったが、育成コストを5ステータス完全共通にした際、スタミナだけに
+  全振りした場合の伸びがあまりに強く(stage250でも無敗)、他ステータスを育てる意味が
+  薄れることがシミュレーションで判明したため0.4に強化した。この係数の下では、
+  スタミナ一点特化(他Lv1)はstage130前後で通用しなくなり、5ステータス均等育成の
+  バランス型はstage160前後まで通用する(いずれもLv30時点、evolutionStage2)。
+  スピードのpressureToOpponentPerSec係数(1.2)やスタミナのmaxStamina係数(20/Lv)は
+  据え置き — 「自分の耐久を直接伸ばすスタミナ」と「相手を早く倒すスピード/アタック」は
+  役割が違うぶん単純な数値の一致は目指さず、ボス側の圧力を強めることで
+  一点特化のやりすぎに歯止めをかける方向にした。
 
 ### アタック(旧称「必殺技」、この名称は使わない)
 - `skillBonus = attackUnlocked ? (4 + damage効実値 × 2) : 0`

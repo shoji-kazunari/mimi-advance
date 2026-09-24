@@ -1,5 +1,5 @@
 import { selfCombatantProfile, bossCombatantProfile, simulateBattle, BATTLE_MS } from '../battle';
-import { baseStats } from '../types';
+import { baseStats, CharacterStats } from '../types';
 
 describe('selfCombatantProfile', () => {
   it('進化0(technique/damage未解放)ではattackUnlockedがfalse', () => {
@@ -106,6 +106,24 @@ describe('simulateBattle', () => {
     const me = selfCombatantProfile(trainedStats, 2);
     const result = simulateBattle(me, bossCombatantProfile(stage));
     expect(result.outcome.winner).toBe('me');
+  });
+
+  it('スタミナ一点特化だけでは、いずれ育成の必要な差に追いつかれる(圧力の伸びを強めた再調整)', () => {
+    // 全ステータスの育成コストを統一したことで、スタミナだけに全振りしても以前ほど
+    // 損はしなくなった。その状態でスタミナ一点特化がどのステージでも勝ち続けてしまうと
+    // 「スタミナ以外を育てる意味がない」ことになるため、bossPressurePerSecの係数を
+    // 0.09->0.4に強め、スタミナ一点特化にも通用しない範囲を作った(stage130で逆転)。
+    // 一方、5ステータスに均等に育てたバランス型はより長く(stage160まで)通用する。
+    const monoStamina: CharacterStats = { speed: 1, stamina: 30, guts: 1, technique: 1, damage: 1 };
+    const balanced: CharacterStats = { speed: 30, stamina: 30, guts: 30, technique: 30, damage: 30 };
+
+    const monoAt120 = simulateBattle(selfCombatantProfile(monoStamina, 2), bossCombatantProfile(120));
+    const monoAt130 = simulateBattle(selfCombatantProfile(monoStamina, 2), bossCombatantProfile(130));
+    expect(monoAt120.outcome.winner).toBe('me');
+    expect(monoAt130.outcome.winner).toBe('opponent');
+
+    const balancedAt160 = simulateBattle(selfCombatantProfile(balanced, 2), bossCombatantProfile(160));
+    expect(balancedAt160.outcome.winner).toBe('me');
   });
 
   it('タイムラインはBATTLE_MSを超えない', () => {

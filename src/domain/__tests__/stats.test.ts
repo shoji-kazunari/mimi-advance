@@ -1,10 +1,10 @@
 import { statUpgradeCost, isStatUnlocked, statLevelCap, shoeMultiplier, characterLevel, companionLevel, highestLevelCharacter } from '../stats';
-import { baseStats, OwnedCharacter } from '../types';
+import { baseStats, OwnedCharacter, STAT_KEYS } from '../types';
 
 describe('statUpgradeCost', () => {
-  it('Lv1(steps=0)ではbaseそのまま', () => {
+  it('Lv1(steps=0)ではbaseそのまま。全ステータス共通コストなので値も同じ', () => {
     expect(statUpgradeCost('stamina', 1)).toBe(3);
-    expect(statUpgradeCost('speed', 1)).toBe(6);
+    expect(statUpgradeCost('speed', 1)).toBe(3);
   });
 
   it('Lv2(steps=10)でgrowthが10乗される', () => {
@@ -13,6 +13,13 @@ describe('statUpgradeCost', () => {
 
   it('最低2', () => {
     expect(statUpgradeCost('stamina', 1)).toBeGreaterThanOrEqual(2);
+  });
+
+  it('5ステータスとも同じLvなら同じコスト(表示上の桁違いを避けるため統一している)', () => {
+    for (const lv of [1, 5, 15, 30, 60]) {
+      const costs = STAT_KEYS.map((stat) => statUpgradeCost(stat, lv));
+      expect(new Set(costs).size).toBe(1);
+    }
   });
 });
 

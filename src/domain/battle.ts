@@ -43,7 +43,7 @@ function speedPressure(speedEffective: number): number {
  * stage=1では0(初回のボス戦の手触りは変えない)。
  */
 function bossPressurePerSec(stage: number): number {
-  return (stage - 1) * 0.09;
+  return (stage - 1) * 0.4;
 }
 
 /** 仕様書5章「スタミナ計算式(自分側)」。プレイヤーキャラ、VSレースの相手キャラの両方に使う。 */
