@@ -26,6 +26,21 @@ Vicマネーを稼いで強化していく放置系育成レースゲーム。
   (`BattleScreen`)をRoot側で管理する。両者ともバトル再生ロジックは
   `src/ui/hooks/useBattlePlayback.ts` を共用する
 
+## Web版の配信(GitHub Pages)
+
+- `main`へのpushで`.github/workflows/deploy-pages.yml`が自動的に
+  `npx expo export -p web`→`tools/fix-web-export-paths.js`→GitHub Pagesへデプロイする
+- `expo export -p web`は`index.html`/JSバンドルにルート直下前提の絶対パス
+  (`/favicon.ico`、`/_expo/static/js/web/....js`、`"/assets/assets/....png"`)を埋め込む。
+  GitHub Pagesのプロジェクトサイトは`https://<user>.github.io/<repo>/`のようにサブパス配信に
+  なるため、そのままだとアセットが404になる。`tools/fix-web-export-paths.js`が相対パスに
+  書き換えることで、サブパス配信・独自ドメインどちらでも動くようにしている
+- **リポジトリ設定でGitHub Pagesを有効化する初回作業が必要**(Settings → Pages → Source を
+  「GitHub Actions」にする)。これはAPIから叩けないため手動
+- 独自ドメインを持たせるときは、パチンコシミュレーターの`gijipachi.jp`と同じ要領で
+  リポジトリ直下に`CNAME`ファイルを置く(Pages側のカスタムドメイン設定と両方揃えること)
+- ローカルでビルド結果を確認したいときは`npm run build:web`→`dist/`をブラウザで開く
+
 ## 実装上の注意(踏んだ地雷)
 
 - 画面遷移用のコールバック(`onFinished`など)を`useEffect`の依存配列にそのまま入れると、
