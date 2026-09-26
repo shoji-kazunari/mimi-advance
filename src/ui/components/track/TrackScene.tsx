@@ -5,7 +5,13 @@ import { BOSS_SPRITES, CharacterSpriteSet } from '../../spriteAssets';
 import { RunnerAvatar } from '../RunnerAvatar';
 import { OpponentEntity } from './OpponentEntity';
 import { TrackBackground } from './TrackBackground';
-import { obstacleTravelMsTo, TrackObstacle } from './TrackObstacle';
+import { TrackObstacle } from './TrackObstacle';
+import {
+  obstacleTravelMsTo,
+  opponentLeftPercentForRatios,
+  RUNNER_LEFT_PERCENT,
+  runnerLeftPercentForRatios,
+} from './trackLayout';
 import { Zako } from './Zako';
 
 /** すれ違うザコの名前(見た目だけの演出用、ゲーム性には影響しない)。 */
@@ -41,14 +47,19 @@ interface BattleProps {
   jumpTimesMs: number[];
   /**
    * jumpTimesMsの各時刻に、ボスが実際に居るはずの左位置(%)。呼び出し側が
-   * staminaAtTime + opponentLeftPercentForRatiosで事前計算する。ボスは仕様書5章により
-   * スタミナに応じて動くため、固定位置(旧OPPONENT_LEFT_PERCENT)を前提にした障害物の
-   * 出現タイミングでは、ボスが動いた分だけジャンプがずれてしまうため必要。
+   * jumpLayoutForTimeline(trackLayout.ts)で事前計算する。ボスは仕様書5章により
+   * スタミナに応じて動くため、固定位置を前提にした障害物の出現タイミングでは、
+   * ボスが動いた分だけジャンプがずれてしまうため必要。
    */
   opponentLeftPercentAtJump: number[];
-  /** frame.meStamina / timeline.meMaxStamina。ボスの詰め寄り具合(仕様書5章)の判定に使う。 */
+  /**
+   * 同じ障害物が自キャラの位置に届く時刻に、自キャラが居るはずの左位置(%)。
+   * 自キャラも勝ちが見えてくると前に出るため、これも事前計算した値を使う。
+   */
+  runnerLeftPercentAtJump: number[];
+  /** frame.meStamina / timeline.meMaxStamina。詰め寄り具合(仕様書5章)の判定に使う。 */
   meRatio: number;
-  /** frame.opponentStamina / timeline.opponentMaxStamina。ボスの横位置はこの残量で自キャラに詰め寄る。 */
+  /** frame.opponentStamina / timeline.opponentMaxStamina。ボスの残量に応じて、ボスは下がり自キャラは前に出る。 */
   opponentRatio: number;
   burstTrigger?: number;
   /** 勝敗演出: 'me'で自キャラが、'opponent'で相手が右へ加速して退場する(仕様書6章)。 */
@@ -67,35 +78,11 @@ type Props = IdleProps | BattleProps;
 
 let zakoIdSeq = 0;
 let obstacleIdSeq = 0;
-const RUNNER_LEFT_PERCENT = 20;
-const OPPONENT_LEFT_PERCENT = 78;
-// ボスがスタミナ0で自キャラに「完全に重なる」ときの位置(仕様書5章)。
-// キャラがボスに追いついて追い抜く瞬間だとひと目でわかるよう、隣接ではなく
-// 自キャラと同じ位置まで詰め寄らせる(レイヤーはキャラが上、下記JSXの描画順を参照)。
-const OPPONENT_ADJACENT_PERCENT = RUNNER_LEFT_PERCENT;
+// 横位置の計算(ボスが下がる/自キャラが前に出る/障害物の到達時間)はtrackLayout.tsにある。
+// 決着間際は、ボスと自キャラが中間地点で重なる(レイヤーはキャラが上、下記JSXの描画順を参照)。
 const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
 const EMPTY_PERCENTS: number[] = [];
-
-// 障害物は右から左へトラック全体を横切る(ザコと同じ動き)。ボスの位置を先に通り、
-// そのあと自キャラの位置(RUNNER_LEFT_PERCENT)を通る。自キャラの位置は動かないので
-// MS_TO_RUNNERは定数。
-const MS_TO_RUNNER = obstacleTravelMsTo(RUNNER_LEFT_PERCENT);
-
-/**
- * 仕様書5章「ボスの横位置はボス自身の残スタミナ比率で自キャラに詰め寄る
- * (スタミナ0で完全に隣接)。自分が劣勢な時だけ遠のく」の実装。
- * 線形(1-opponentRatio)のままだと、スタミナがまだ半分以上残っている段階から
- * 見た目上どんどん詰め寄ってしまい「抜き去るタイミングが早すぎる」ため、
- * 3乗のイーズインをかけて、本当にスタミナが尽きる直前までは大きく動かず、
- * 終盤だけ一気に詰め寄る(=完全に隣接するのはスタミナがほぼ0の瞬間)ようにする。
- */
-export function opponentLeftPercentForRatios(meRatio: number, opponentRatio: number): number {
-  const disadvantage = Math.max(0, opponentRatio - meRatio);
-  const approachBase = Math.min(1, Math.max(0, 1 - opponentRatio - disadvantage));
-  const approachRatio = approachBase ** 3;
-  return OPPONENT_LEFT_PERCENT - (OPPONENT_LEFT_PERCENT - OPPONENT_ADJACENT_PERCENT) * approachRatio;
-}
 
 /**
  * 「耳アド UI手触り仕様書」0章: 走行シーン(トラック)の実体。アイドル時(ザコ追い抜きループ)と
@@ -110,6 +97,8 @@ export function TrackScene(props: Props) {
   const opponentJumpTimes = props.mode === 'battle' ? props.jumpTimesMs : EMPTY_JUMPS;
   const opponentLeftPercentAtJump =
     props.mode === 'battle' ? props.opponentLeftPercentAtJump : EMPTY_PERCENTS;
+  const runnerLeftPercentAtJump =
+    props.mode === 'battle' ? props.runnerLeftPercentAtJump : EMPTY_PERCENTS;
   const burstTrigger = props.burstTrigger ?? 0;
   const exitSide = props.mode === 'battle' ? props.exitSide ?? null : null;
   const opponentJumpTimesKey = opponentJumpTimes.join(',');
@@ -121,7 +110,11 @@ export function TrackScene(props: Props) {
   );
   const runnerJumpTimes =
     props.mode === 'battle'
-      ? opponentJumpTimes.map((t, i) => t + (MS_TO_RUNNER - msToOpponentAtJump[i]))
+      ? opponentJumpTimes.map(
+          (t, i) =>
+            t +
+            (obstacleTravelMsTo(runnerLeftPercentAtJump[i] ?? RUNNER_LEFT_PERCENT) - msToOpponentAtJump[i])
+        )
       : EMPTY_JUMPS;
   const meAttackTimesMs = props.mode === 'battle' ? props.meAttackTimesMs ?? EMPTY_JUMPS : EMPTY_JUMPS;
   const opponentAttackTimesMs = props.mode === 'battle' ? props.opponentAttackTimesMs ?? EMPTY_JUMPS : EMPTY_JUMPS;
@@ -187,15 +180,18 @@ export function TrackScene(props: Props) {
       runnerExitAnim.setValue(0);
     }
   }, [exitSide, runnerExitAnim]);
-  const runnerLeft = runnerExitAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`${RUNNER_LEFT_PERCENT}%`, '140%'],
-  });
-
-  // 仕様書5章: ボスの横位置はスタミナ比率に応じて自キャラに詰め寄る(opponentLeftPercentForRatios参照)。
+  // 仕様書5章: ボスはスタミナ比率に応じて下がってきて、自キャラも前に出る
+  // (trackLayout.tsのopponentLeftPercentForRatios / runnerLeftPercentForRatios参照)。
+  // アイドル時は両比率が1なので、それぞれ定位置のまま。
   const opponentRatio = props.mode === 'battle' ? props.opponentRatio : 1;
   const meRatio = props.mode === 'battle' ? props.meRatio : 1;
   const opponentSettleLeft = opponentLeftPercentForRatios(meRatio, opponentRatio);
+  const runnerSettleLeft = runnerLeftPercentForRatios(meRatio, opponentRatio);
+  // 勝利の退場は、前に出ている今の位置から右へ抜ける(決着時はスタミナ比率が止まるので位置も固定される)。
+  const runnerLeft = runnerExitAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [`${runnerSettleLeft}%`, '140%'],
+  });
 
   return (
     <View style={styles.scene}>
