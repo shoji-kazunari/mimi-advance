@@ -44,6 +44,8 @@ export interface GameState {
   characters: OwnedCharacter[];
   activeCharacterId: string;
   vsRace: VsRaceState;
+  /** 最後に状態が更新された時刻(epoch ms)。放置報酬の経過時間の基準。古いセーブには無い。 */
+  lastActiveAt?: number;
 }
 
 export function baseStats(): CharacterStats {
