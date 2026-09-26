@@ -2,11 +2,12 @@
 // ビルド済みのindex.htmlにGoogleアナリティクス(GA4)のタグを差し込む。
 // 測定IDはリポジトリ直下のsite.config.jsonの1か所にだけ書く。
 // expo exportが生成するindex.htmlはテンプレートを持たないため、ビルド後に文字列で挿入している。
+// リポジトリ直下から実行する前提(npm run build:web経由)。
 const fs = require('fs');
 const path = require('path');
 
 const distDir = process.argv[2] || 'dist';
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'site.config.json'), 'utf-8'));
+const config = JSON.parse(fs.readFileSync('site.config.json', 'utf-8'));
 const id = config.gaMeasurementId;
 
 if (!/^G-[A-Z0-9]+$/.test(id || '')) {
