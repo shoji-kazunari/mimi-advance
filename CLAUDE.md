@@ -28,8 +28,12 @@ Vicマネーを稼いで強化していく放置系育成レースゲーム。
 
 ## Web版の配信(GitHub Pages)
 
-- `main`へのpushで`.github/workflows/deploy-pages.yml`が自動的に
-  `npx expo export -p web`→`tools/fix-web-export-paths.js`→GitHub Pagesへデプロイする
+- `main`へのpushで`.github/workflows/deploy-pages.yml`が自動的に`npm run build:web`
+  (`expo export -p web`→`tools/fix-web-export-paths.js`→`tools/inject-analytics.js`→
+  `tools/add-privacy-page.js`)を実行し、GitHub Pagesへデプロイする
+- **アクセス解析(GA4)** … 測定IDは`site.config.json`の1か所にだけ書く。`inject-analytics.js`が
+  ビルド後の`index.html`にタグを差し込む。外部へ送る項目(解析・広告など)を増やしたら、
+  必ず`tools/privacy.html`(公開URLは`<サイト>/privacy/`)も直すこと
 - `expo export -p web`は`index.html`/JSバンドルにルート直下前提の絶対パス
   (`/favicon.ico`、`/_expo/static/js/web/....js`、`"/assets/assets/....png"`)を埋め込む。
   GitHub Pagesのプロジェクトサイトは`https://<user>.github.io/<repo>/`のようにサブパス配信に

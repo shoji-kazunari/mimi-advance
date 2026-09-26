@@ -33,7 +33,7 @@
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "build:web": "expo export -p web && node tools/fix-web-export-paths.js dist"
+    "build:web": "expo export -p web && node tools/fix-web-export-paths.js dist && node tools/inject-analytics.js dist && node tools/add-privacy-page.js dist"
   },
   "private": true
 }
