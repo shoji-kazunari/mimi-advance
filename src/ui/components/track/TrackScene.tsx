@@ -79,7 +79,7 @@ type Props = IdleProps | BattleProps;
 let zakoIdSeq = 0;
 let obstacleIdSeq = 0;
 // 横位置の計算(ボスが下がる/自キャラが前に出る/障害物の到達時間)はtrackLayout.tsにある。
-// 決着間際は、ボスと自キャラが中間地点で重なる(レイヤーはキャラが上、下記JSXの描画順を参照)。
+// 決着間際は、ボスと自キャラが合流地点で重なる(レイヤーはキャラが上、下記JSXの描画順を参照)。
 const RUNNER_EXIT_MS = 450;
 const EMPTY_JUMPS: number[] = [];
 const EMPTY_PERCENTS: number[] = [];

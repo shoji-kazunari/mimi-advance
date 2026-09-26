@@ -4,8 +4,15 @@ import { BattleTimeline, staminaAtTime } from '../../../domain/battle';
 
 export const RUNNER_LEFT_PERCENT = 20;
 export const OPPONENT_LEFT_PERCENT = 78;
-/** 決着間際に自キャラとボスが重なる位置。両者が互いに歩み寄る形にするため、定位置の中間にする。 */
-export const MEET_LEFT_PERCENT = (RUNNER_LEFT_PERCENT + OPPONENT_LEFT_PERCENT) / 2;
+/**
+ * 自キャラが前に出る距離の、定位置どうしの間隔(自キャラ〜ボス)に対する割合。
+ * 最初は半分(中間で重なる)にしたが、前に出すぎと感じたため1/4にした。
+ * 大きくするほど自キャラが前に出て、ボスが下がる距離は短くなる。
+ */
+export const RUNNER_ADVANCE_RATIO = 0.25;
+/** 決着間際に自キャラとボスが重なる位置(34.5%)。自キャラは少し前に出て、ボスが大きく下がって合流する。 */
+export const MEET_LEFT_PERCENT =
+  RUNNER_LEFT_PERCENT + (OPPONENT_LEFT_PERCENT - RUNNER_LEFT_PERCENT) * RUNNER_ADVANCE_RATIO;
 
 // 障害物は右から左へトラック全体を横切る(ザコと同じ動き)。
 export const OBSTACLE_START_PERCENT = 100;
@@ -21,7 +28,7 @@ export function obstacleTravelMsTo(leftPercent: number): number {
 /**
  * 仕様書5章「ボスの横位置はボス自身の残スタミナ比率で自キャラに詰め寄る
  * (スタミナ0で完全に重なる)。自分が劣勢な時だけ遠のく」の、詰め寄り具合(0〜1)。
- * 0=互いに定位置、1=中間地点で重なる。
+ * 0=互いに定位置、1=合流地点(MEET_LEFT_PERCENT)で重なる。
  * 線形(1-opponentRatio)のままだと、スタミナがまだ半分以上残っている段階から
  * 見た目上どんどん詰め寄ってしまい「抜き去るタイミングが早すぎる」ため、
  * 3乗のイーズインをかけて、本当にスタミナが尽きる直前までは大きく動かず、
@@ -33,14 +40,14 @@ export function battleApproach(meRatio: number, opponentRatio: number): number {
   return base ** 3;
 }
 
-/** ボスは右の定位置から中間地点へ下がってくる。 */
+/** ボスは右の定位置から合流地点へ下がってくる。 */
 export function opponentLeftPercentForRatios(meRatio: number, opponentRatio: number): number {
   const approach = battleApproach(meRatio, opponentRatio);
   return OPPONENT_LEFT_PERCENT - (OPPONENT_LEFT_PERCENT - MEET_LEFT_PERCENT) * approach;
 }
 
 /**
- * 自キャラは勝ちが見えてくると、左の定位置から中間地点へ前に出ていく
+ * 自キャラは勝ちが見えてくると、左の定位置から少しだけ(合流地点まで)前に出ていく
  * (以前は定位置から動かず、ボスだけが長い距離を詰めてきていた)。
  */
 export function runnerLeftPercentForRatios(meRatio: number, opponentRatio: number): number {

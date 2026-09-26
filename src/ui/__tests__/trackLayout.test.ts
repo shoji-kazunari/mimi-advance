@@ -40,7 +40,13 @@ describe('位置(%)', () => {
     expect(opponentLeftPercentForRatios(1, 1)).toBe(OPPONENT_LEFT_PERCENT);
   });
 
-  it('勝ちが見えると、ボスは下がり自キャラは前に出て、中間地点で重なる', () => {
+  it('自キャラが前に出る距離は、定位置どうしの間隔の1/4', () => {
+    const gap = OPPONENT_LEFT_PERCENT - RUNNER_LEFT_PERCENT;
+    expect(runnerLeftPercentForRatios(0.8, 0) - RUNNER_LEFT_PERCENT).toBeCloseTo(gap / 4);
+    expect(MEET_LEFT_PERCENT).toBeCloseTo(34.5);
+  });
+
+  it('勝ちが見えると、ボスは下がり自キャラは前に出て、合流地点で重なる', () => {
     expect(runnerLeftPercentForRatios(0.8, 0)).toBeCloseTo(MEET_LEFT_PERCENT);
     expect(opponentLeftPercentForRatios(0.8, 0)).toBeCloseTo(MEET_LEFT_PERCENT);
 
@@ -49,7 +55,7 @@ describe('位置(%)', () => {
     expect(opponentLeftPercentForRatios(1, 0.2)).toBeLessThan(OPPONENT_LEFT_PERCENT);
   });
 
-  it('自キャラの移動が、定位置〜中間地点の範囲を外れない', () => {
+  it('自キャラの移動が、定位置〜合流地点の範囲を外れない', () => {
     for (const me of [0, 0.3, 0.7, 1]) {
       for (const opponent of [0, 0.25, 0.5, 0.75, 1]) {
         const runner = runnerLeftPercentForRatios(me, opponent);
@@ -75,7 +81,7 @@ describe('jumpLayoutForTimeline', () => {
     expect(layout.runnerLeftPercentAtJump).toHaveLength(timeline.obstacleTimesMs.length);
   });
 
-  it('自キャラの位置は定位置〜中間地点の範囲に収まる', () => {
+  it('自キャラの位置は定位置〜合流地点の範囲に収まる', () => {
     for (const left of layout.runnerLeftPercentAtJump) {
       expect(left).toBeGreaterThanOrEqual(RUNNER_LEFT_PERCENT);
       expect(left).toBeLessThanOrEqual(MEET_LEFT_PERCENT);
