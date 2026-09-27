@@ -13,6 +13,7 @@ import {
 } from '../domain/stage';
 import { baseStats, GameState, OwnedCharacter, StatKey, STAT_KEYS } from '../domain/types';
 import { resetVsRaceIfNewDay, VS_RACE_DAILY_LIMIT } from '../domain/vsRace';
+import { initialWeeklyProgress, resetWeeklyProgressIfNewWeek } from '../domain/ranking';
 
 const STORAGE_KEY = 'mimi-advance/save';
 
@@ -89,6 +90,19 @@ function updateCharacter(
   return {
     ...state,
     characters: state.characters.map((c) => (c.defId === defId ? updater(c) : c)),
+  };
+}
+
+/**
+ * ランナーptの獲得(ザコ通過・ボス撃破・放置報酬)にだけ通す。デバッグパネルの
+ * チート加算はここを通さないため、ランキングの「今週の獲得pt」には乗らない。
+ */
+function addRunnerPt(state: GameState, amount: number): GameState {
+  const weeklyProgress = resetWeeklyProgressIfNewWeek(state.weeklyProgress ?? initialWeeklyProgress());
+  return {
+    ...state,
+    runnerPt: state.runnerPt + amount,
+    weeklyProgress: { ...weeklyProgress, earnedPt: weeklyProgress.earnedPt + amount },
   };
 }
 
@@ -175,7 +189,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const required = zakoRequiredCount(character.stage);
 
       return updateCharacter(
-        { ...state, runnerPt: state.runnerPt + gained },
+        addRunnerPt(state, gained),
         character.defId,
         (c) => ({
           ...c,
@@ -235,9 +249,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (!character) return state;
       if (!won) return state; // 敗北時は再挑戦可能なまま(仕様書5章: ボスは再戦時に元位置へ)
 
-      const runnerPt = state.runnerPt + bossRunnerPtReward(character.stage);
-      const vicMoney = state.vicMoney + bossVicMoneyReward(character.stage);
-      return updateCharacter({ ...state, runnerPt, vicMoney }, defId, (c) => ({
+      const withPt = addRunnerPt(state, bossRunnerPtReward(character.stage));
+      const vicMoney = withPt.vicMoney + bossVicMoneyReward(character.stage);
+      return updateCharacter({ ...withPt, vicMoney }, defId, (c) => ({
         ...c,
         stage: c.stage + 1,
         zakoDefeated: 0,
@@ -253,6 +267,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...state,
         vicMoney: won ? state.vicMoney + vicGained : state.vicMoney,
         vsRace: { ...vsRace, remaining },
+        // ランキング(VSレース勝率)用。勝敗にかかわらず挑戦数としてカウントする。
+        vsRaceAttempts: (state.vsRaceAttempts ?? 0) + 1,
+        vsRaceWins: (state.vsRaceWins ?? 0) + (won ? 1 : 0),
       };
     });
   },
@@ -311,7 +328,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     get().setState((state) => {
       const character = activeCharacter(state);
       return updateCharacter(
-        { ...state, runnerPt: state.runnerPt + progress.runnerPt },
+        addRunnerPt(state, progress.runnerPt),
         character.defId,
         (c) => ({
           ...c,

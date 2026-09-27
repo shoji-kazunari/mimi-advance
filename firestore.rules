@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// Firebaseコンソール → Firestore Database → ルール タブに、この内容をそのまま貼り付けて公開する。
+// (クライアントのFirebase SDKからは書き換えられないため、この手動貼り付けが唯一の反映手段)
+//
+// 前提: Authentication → Sign-in method → 匿名 を有効にしておくこと。
+// 有効にしていないと ensureSignedIn() が失敗し、ランキング送信・閲覧の両方が動かない。
+//
+// 上限値は src/domain/ranking.ts の MAX_PLAUSIBLE_* と揃えてある。サーバーを持たないため
+// 「本当にゲームが計算した値か」は検証できず、ここでの上限は不正対策ではなく異常値フィルタ。
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 到達ステージ・総合Lv.・VSレース勝率。ドキュメントIDは匿名認証のuidそのもの。
+    // 読み取りは誰でも可(公開ランキング)、書き込みは「自分のuidのドキュメントだけ」。
+    match /players/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == playerId
+        && request.resource.data.keys().hasOnly(
+          ['username', 'stage', 'totalLevel', 'vsWins', 'vsAttempts', 'vsWinRate', 'updatedAt']
+        )
+        && request.resource.data.username is string
+        && request.resource.data.username.size() <= 20
+        && request.resource.data.stage is number
+        && request.resource.data.stage >= 1
+        && request.resource.data.stage <= 100000
+        && request.resource.data.totalLevel is number
+        && request.resource.data.totalLevel >= 0
+        && request.resource.data.totalLevel <= 1000000
+        && request.resource.data.vsWins is number
+        && request.resource.data.vsAttempts is number
+        && request.resource.data.vsWins >= 0
+        && request.resource.data.vsAttempts >= 0
+        && request.resource.data.vsWins <= request.resource.data.vsAttempts
+        && request.resource.data.vsWinRate is number
+        && request.resource.data.vsWinRate >= 0
+        && request.resource.data.vsWinRate <= 1;
+    }
+
+    // 週間ランキング(今週の獲得pt)。weekKeyごとにサブコレクションが分かれ、
+    // 週が変われば自然に0から再スタートする(過去の週のドキュメントは残る)。
+    match /weeklyScores/{weekKey}/entries/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == playerId
+        && request.resource.data.keys().hasOnly(['username', 'earnedPt', 'updatedAt'])
+        && request.resource.data.username is string
+        && request.resource.data.username.size() <= 20
+        && request.resource.data.earnedPt is number
+        && request.resource.data.earnedPt >= 0
+        && request.resource.data.earnedPt <= 100000000;
+    }
+  }
+}

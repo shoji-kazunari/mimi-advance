@@ -11,8 +11,9 @@ Vicマネーを稼いで強化していく放置系育成レースゲーム。
   `docs/spec.md` に書かれていない細部の挙動判断に迷ったら、プロトタイプのソースも参照する
 - バトル(ボス戦・VSレース)は**開始時に全結果を計算してから再生するタイムラインベースの
   決定論的シミュレーション**。演出のスキップで結果が変わってはいけない
-- 自前サーバーは持たない。ランキング等の非同期対戦要素は現状ダミーデータ(仕様書 11章)だが、
-  Firebase(Firestore)をブラウザから直接読み書きする形でなら追加予定(下記)
+- 自前サーバーは持たない。VSレースの対戦相手はダミー生成のままだが、ランキング(到達ステージ・
+  総合Lv.・今週の獲得pt・VSレース勝率)はFirebase(Firestore)をブラウザから直接読み書きする形で
+  実データ化している(仕様書6章、下記「Firebase」節)
 
 ## ディレクトリ構成
 
@@ -46,18 +47,32 @@ Vicマネーを稼いで強化していく放置系育成レースゲーム。
   リポジトリ直下に`CNAME`ファイルを置く(Pages側のカスタムドメイン設定と両方揃えること)
 - ローカルでビルド結果を確認したいときは`npm run build:web`→`dist/`をブラウザで開く
 
-## Firebase(将来のランキング用。解析は別で導入済み、下記参照)
+## Firebase(ランキング用。解析は別で導入済み、下記参照)
 
 - プロジェクト「MimiAdvance」(パチンコシミュレーターとは別プロジェクト、同じGoogleアカウント)
 - 設定は`src/firebase/config.ts`に直書き。ウェブ向けapiKeyは公開情報でアクセス制御は
   Firestoreのセキュリティルール側の役目なので、リポジトリにコミットして問題ない
-- `src/firebase/init.ts`がFirebase Appを初期化し、`db`(Firestore)をexportする
+- `src/firebase/init.ts`がFirebase App/Firestore(`db`)/Auth(`auth`)を初期化する
 - **アクセス解析にはFirebase Analyticsを使わない。** GA4は`tools/inject-analytics.js`の
   軽量な`gtag.js`直埋め込み方式ですでに導入済みで、Firebase Analytics SDKを別途
   読み込むと測定IDが二重(別のGA4プロパティ)になりバンドルサイズも増えるだけなので、
   Firebaseプロジェクト作成時に自動発行されたAnalyticsストリームは使わずに残してある
-- 現状Firestoreは`db`をexportしているだけで、ランキング機能自体(読み書き・
-  セキュリティルール)は未実装
+- **プレイヤー識別は匿名認証(`src/firebase/auth.ts`のensureSignedIn)。** ドキュメントIDに
+  ランダムな自己申告IDを使うと、認証なしでは「他人のドキュメントを誰でも上書きできる」
+  状態になってしまう。匿名認証のuidをドキュメントIDにし、セキュリティルールで
+  `request.auth.uid == playerId`を要求することで、自分の記録しか書けないようにしている。
+  **Firebaseコンソールで Authentication → Sign-in method → 匿名 を有効にする初回作業が必要**
+  (Firestore有効化・GitHub Pages有効化と同様、APIから叩けないため手動)
+- **`firestore.rules`(リポジトリ直下)をFirebaseコンソールのFirestore → ルール タブに
+  手動で貼って公開する必要がある。** クライアントSDKからは反映できない
+- `src/domain/ranking.ts`(純粋関数・週キー計算・妥当性チェック)→`src/firebase/ranking.ts`
+  (Firestore読み書き)→`src/ui/hooks/useRankingSync.ts`(30秒おきに自動送信、失敗は握りつぶす)
+  →`src/ui/screens/RankingScreen.tsx`(4タブのランキング表示)という構成
+- ランキングの値の正しさ(不正な値でないか)は`MAX_PLAUSIBLE_*`定数と`firestore.rules`の
+  両方で上限チェックしているが、サーバーを持たないため「本当にゲームが計算したか」自体は
+  検証できない。デバッグパネル(`🐞`、`window.__MIMI_LAB__`未設定時は非表示)経由の
+  pt/Vic加算がランキング値に乗らないよう、加算経路を`addRunnerPt`1箇所に絞ってあるので、
+  ランナーpt周りに新しい加算処理を足すときはそこを通すこと
 
 ## 実装上の注意(踏んだ地雷)
 
@@ -68,3 +83,7 @@ Vicマネーを稼いで強化していく放置系育成レースゲーム。
 - `GaugeBar`はルートに`width:'100%'`を持つ。flexDirection:'row'の中で他要素と横並びに
   置くときは、ラップ側に`flex:1`を与えないと「残り幅」ではなく「親の幅」基準で広がって
   隣の要素と重なる
+- MainScreenの🐞デバッグパネル(pt/Vic加算・ステージ進行)は`window.__MIMI_LAB__`が
+  立っていない通常の公開ビルドでは常に非表示にする(`src/ui/devMode.ts`の`isDevBuild`)。
+  ランキング機能を入れる前はガードが無く、誰でも押せる状態で公開されていた
+  (見た目に出ないだけで、直したのはランキング機能を意味あるものにするため)

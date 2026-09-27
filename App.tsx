@@ -6,6 +6,7 @@ import { highestLevelCharacter } from './src/domain/stats';
 import { VsOpponent, vsRaceVicReward } from './src/domain/vsRace';
 import { useGameStore } from './src/state/gameStore';
 import { useActiveCharacter } from './src/state/selectors';
+import { isDevBuild } from './src/ui/devMode';
 import { offlineReportMessage } from './src/ui/format';
 import { NotificationProvider, useNotifications } from './src/ui/Notifications';
 import { prefetchAllCharacterSprites } from './src/ui/spriteAssets';
@@ -15,8 +16,10 @@ import { ButtonLab } from './src/ui/screens/ButtonLab';
 import { CharacterDetailScreen } from './src/ui/screens/CharacterDetailScreen';
 import { CharacterListScreen } from './src/ui/screens/CharacterListScreen';
 import { MainScreen } from './src/ui/screens/MainScreen';
+import { RankingScreen } from './src/ui/screens/RankingScreen';
 import { VsOpponentSelectScreen } from './src/ui/screens/VsOpponentSelectScreen';
 import { colors } from './src/ui/theme';
+import { useRankingSync } from './src/ui/hooks/useRankingSync';
 
 // 'main'はオーバーレイなし(MainScreenの素の表示)を表すだけで、実際のMainScreenは
 // 常にマウントしたままにする。他の画面はすべてその上に重ねるオーバーレイとして扱う。
@@ -28,7 +31,8 @@ type Overlay =
   | { name: 'characters' }
   | { name: 'characterDetail'; defId: string }
   | { name: 'vsSelect' }
-  | { name: 'vsBattle'; opponent: VsOpponent };
+  | { name: 'vsBattle'; opponent: VsOpponent }
+  | { name: 'ranking' };
 
 function Root() {
   const hydrate = useGameStore((s) => s.hydrate);
@@ -39,6 +43,7 @@ function Root() {
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const claimOfflineProgress = useGameStore((s) => s.claimOfflineProgress);
   const { showToast, showPopup } = useNotifications();
+  useRankingSync();
 
   useEffect(() => {
     void hydrate();
@@ -87,7 +92,14 @@ function Root() {
       <MainScreen
         onOpenCharacters={() => setOverlay({ name: 'characters' })}
         onOpenVsRace={() => setOverlay({ name: 'vsSelect' })}
+        onOpenRanking={() => setOverlay({ name: 'ranking' })}
       />
+
+      {overlay?.name === 'ranking' && (
+        <View style={StyleSheet.absoluteFill}>
+          <RankingScreen onBack={() => setOverlay(null)} />
+        </View>
+      )}
 
       {overlay?.name === 'characters' && (
         <CharacterListScreen
@@ -133,14 +145,10 @@ function Root() {
   );
 }
 
-// 手触り確認用の最小ページ。シェルHTML側で window.__MIMI_LAB__ を立てたビルドだけがここに入る。
-const isButtonLab =
-  typeof window !== 'undefined' && (window as unknown as { __MIMI_LAB__?: boolean }).__MIMI_LAB__ === true;
-
 export default function App() {
   applyWebTouchFix();
 
-  if (isButtonLab) {
+  if (isDevBuild) {
     return (
       <>
         <ButtonLab />

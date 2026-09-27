@@ -60,6 +60,12 @@ describe('registerZakoPass', () => {
     expect(getCharacter().totalZakoDefeated).toBe(1);
   });
 
+  it('今週の獲得pt(weeklyProgress)にも同じ額が積まれる(ランキング用)', () => {
+    useGameStore.getState().registerZakoPass();
+    const { runnerPt, weeklyProgress } = useGameStore.getState().state;
+    expect(weeklyProgress?.earnedPt).toBe(runnerPt);
+  });
+
   it('必要数を超えて数えない(ボス待ちでカンストする)', () => {
     for (let i = 0; i < 10; i++) useGameStore.getState().registerZakoPass();
     // ステージ1の必要数は3体
@@ -150,6 +156,24 @@ describe('resolveVsRace', () => {
     useGameStore.getState().resolveVsRace(50, false);
     expect(useGameStore.getState().state.vsRace.remaining).toBe(before - 2);
     expect(useGameStore.getState().state.vicMoney).toBe(50);
+  });
+
+  it('勝敗によらず挑戦数が増え、勝った時だけ勝利数も増える(ランキングのVS勝率用)', () => {
+    useGameStore.getState().resolveVsRace(50, true);
+    expect(useGameStore.getState().state.vsRaceAttempts).toBe(1);
+    expect(useGameStore.getState().state.vsRaceWins).toBe(1);
+
+    useGameStore.getState().resolveVsRace(50, false);
+    expect(useGameStore.getState().state.vsRaceAttempts).toBe(2);
+    expect(useGameStore.getState().state.vsRaceWins).toBe(1);
+  });
+});
+
+describe('デバッグパネルのチートはランキング集計に乗らない', () => {
+  it('debugAddRunnerPtはrunnerPtを増やすが、weeklyProgress.earnedPtは増やさない', () => {
+    useGameStore.getState().debugAddRunnerPt();
+    expect(useGameStore.getState().state.runnerPt).toBeGreaterThan(0);
+    expect(useGameStore.getState().state.weeklyProgress?.earnedPt ?? 0).toBe(0);
   });
 });
 

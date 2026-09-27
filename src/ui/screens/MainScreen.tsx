@@ -8,6 +8,7 @@ import { SHOE_UNLOCK_COST } from '../../domain/shoes';
 import { STAT_KEYS } from '../../domain/types';
 import { useGameStore } from '../../state/gameStore';
 import { useActiveCharacter } from '../../state/selectors';
+import { isDevBuild } from '../devMode';
 import { formatJP } from '../format';
 import { useBattlePlayback } from '../hooks/useBattlePlayback';
 import { useShake } from '../hooks/useShake';
@@ -56,9 +57,10 @@ const DUMMY_PROFILE = {
 interface Props {
   onOpenCharacters: () => void;
   onOpenVsRace: () => void;
+  onOpenRanking: () => void;
 }
 
-export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
+export function MainScreen({ onOpenCharacters, onOpenVsRace, onOpenRanking }: Props) {
   const state = useGameStore((s) => s.state);
   const registerZakoPass = useGameStore((s) => s.registerZakoPass);
   const upgradeStat = useGameStore((s) => s.upgradeStat);
@@ -215,7 +217,6 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [helpVisible, setHelpVisible] = useState(false);
   const [saveCodeVisible, setSaveCodeVisible] = useState(false);
-  const [rankingVisible, setRankingVisible] = useState(false);
   const [debugVisible, setDebugVisible] = useState(false);
 
   const [popups, setPopups] = useState<{ id: number; text: string }[]>([]);
@@ -288,9 +289,11 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
             <Pressable style={styles.circleButton} onPress={() => setHelpVisible(true)}>
               <Text>❓</Text>
             </Pressable>
-            <Pressable style={styles.circleButton} onPress={() => setDebugVisible(true)}>
-              <Text>🐞</Text>
-            </Pressable>
+            {isDevBuild && (
+              <Pressable style={styles.circleButton} onPress={() => setDebugVisible(true)}>
+                <Text>🐞</Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
@@ -486,7 +489,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               ステージ{VS_RACE_UNLOCK_STAGE}で解放されます(現在の最高ステージ: {character.stage})
             </Text>
           )}
-          <Pressable style={styles.rankingLink} onPress={() => setRankingVisible(true)}>
+          <Pressable style={styles.rankingLink} onPress={onOpenRanking}>
             <Text style={styles.rankingLinkText}>🏆 みんなのランキングを見る</Text>
           </Pressable>
         </View>
@@ -537,31 +540,6 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
                 <Text style={styles.helpItem}>ランキング: 全ランナー中のステージ進行度ランキング。</Text>
               </ScrollView>
               <Pressable style={styles.modalSave} onPress={() => setHelpVisible(false)}>
-                <Text style={styles.modalSaveText}>閉じる</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal visible={rankingVisible} transparent animationType="fade">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>🏆 みんなのランキング</Text>
-              <Text style={styles.rankingNote}>
-                (ダミーデータです。実際の非同期対戦データは未実装 — 仕様書11章)
-              </Text>
-              <ScrollView style={{ maxHeight: 260 }}>
-                {DUMMY_RANKING.map((row, i) => (
-                  <View key={row.name} style={styles.rankingRow}>
-                    <Text style={styles.rankingRank}>{i + 1}</Text>
-                    <Text style={styles.rankingName} numberOfLines={1}>
-                      {row.name}
-                    </Text>
-                    <Text style={styles.rankingStage}>ステージ{row.stage}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-              <Pressable style={styles.modalSave} onPress={() => setRankingVisible(false)}>
                 <Text style={styles.modalSaveText}>閉じる</Text>
               </Pressable>
             </View>
@@ -620,14 +598,6 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
     </View>
   );
 }
-
-const DUMMY_RANKING = [
-  { name: 'ねこみみ_42', stage: 342 },
-  { name: 'たぬ吉', stage: 288 },
-  { name: 'うさぎ団長', stage: 210 },
-  { name: 'きつね商店', stage: 175 },
-  { name: 'ひつじ係長', stage: 140 },
-];
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
@@ -710,11 +680,6 @@ const styles = StyleSheet.create({
   vsButtonText: { color: '#fff', fontWeight: '700' },
   rankingLink: { alignSelf: 'center', marginTop: 4 },
   rankingLinkText: { color: colors.subtext, fontSize: 12 },
-  rankingNote: { fontSize: 11, color: colors.subtext, marginBottom: 8 },
-  rankingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
-  rankingRank: { color: colors.accent, fontWeight: '800', width: 20 },
-  rankingName: { flex: 1, color: colors.text },
-  rankingStage: { color: colors.subtext, fontSize: 12 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
   modalCard: { width: '85%', backgroundColor: colors.card, borderRadius: 16, padding: 20, gap: 12 },
   modalTitle: { fontSize: 16, fontWeight: '700', color: colors.text },

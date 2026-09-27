@@ -46,6 +46,11 @@ export interface GameState {
   vsRace: VsRaceState;
   /** 最後に状態が更新された時刻(epoch ms)。放置報酬の経過時間の基準。古いセーブには無い。 */
   lastActiveAt?: number;
+  /** ランキング(VSレース勝率)用の通算戦績。古いセーブには無い。 */
+  vsRaceWins?: number;
+  vsRaceAttempts?: number;
+  /** ランキング(今週の獲得pt)用。週が変わったら0にリセットされる。古いセーブには無い。 */
+  weeklyProgress?: { weekKey: string; earnedPt: number };
 }
 
 export function baseStats(): CharacterStats {
