@@ -11,15 +11,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 到達ステージ・総合Lv.・VSレース勝率。ドキュメントIDは匿名認証のuidそのもの。
+    // 到達ステージ・総合Lv.(通算/現在値)。ドキュメントIDは匿名認証のuidそのもの。
     // 読み取りは誰でも可(公開ランキング)、書き込みは「自分のuidのドキュメントだけ」。
     match /players/{playerId} {
       allow read: if true;
       allow write: if request.auth != null
         && request.auth.uid == playerId
-        && request.resource.data.keys().hasOnly(
-          ['username', 'stage', 'totalLevel', 'vsWins', 'vsAttempts', 'vsWinRate', 'updatedAt']
-        )
+        && request.resource.data.keys().hasOnly(['username', 'stage', 'totalLevel', 'updatedAt'])
         && request.resource.data.username is string
         && request.resource.data.username.size() <= 20
         && request.resource.data.stage is number
@@ -27,7 +25,25 @@ service cloud.firestore {
         && request.resource.data.stage <= 100000
         && request.resource.data.totalLevel is number
         && request.resource.data.totalLevel >= 0
-        && request.resource.data.totalLevel <= 1000000
+        && request.resource.data.totalLevel <= 1000000;
+    }
+
+    // 週間ランキング(今週の獲得pt・今週のVSレース勝率)。weekKeyごとにサブコレクションが
+    // 分かれ、週が変われば自然に0から再スタートする(過去の週のドキュメントは残る)。
+    // どちらも通算にすると「長く続けているほど有利」になってしまうため週リセットにしている
+    // (VS勝率は特に、試行回数が増えるほど比率が動かなくなり、通算だと事実上固定化する)。
+    match /weeklyScores/{weekKey}/entries/{playerId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == playerId
+        && request.resource.data.keys().hasOnly(
+          ['username', 'earnedPt', 'vsWins', 'vsAttempts', 'vsWinRate', 'updatedAt']
+        )
+        && request.resource.data.username is string
+        && request.resource.data.username.size() <= 20
+        && request.resource.data.earnedPt is number
+        && request.resource.data.earnedPt >= 0
+        && request.resource.data.earnedPt <= 100000000
         && request.resource.data.vsWins is number
         && request.resource.data.vsAttempts is number
         && request.resource.data.vsWins >= 0
@@ -36,20 +52,6 @@ service cloud.firestore {
         && request.resource.data.vsWinRate is number
         && request.resource.data.vsWinRate >= 0
         && request.resource.data.vsWinRate <= 1;
-    }
-
-    // 週間ランキング(今週の獲得pt)。weekKeyごとにサブコレクションが分かれ、
-    // 週が変われば自然に0から再スタートする(過去の週のドキュメントは残る)。
-    match /weeklyScores/{weekKey}/entries/{playerId} {
-      allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.uid == playerId
-        && request.resource.data.keys().hasOnly(['username', 'earnedPt', 'updatedAt'])
-        && request.resource.data.username is string
-        && request.resource.data.username.size() <= 20
-        && request.resource.data.earnedPt is number
-        && request.resource.data.earnedPt >= 0
-        && request.resource.data.earnedPt <= 100000000;
     }
   }
 }

@@ -30,8 +30,8 @@ async function loadRows(category: RankingCategory): Promise<Row[]> {
     return rows.map((r: PlayerBoardEntry) => ({ username: r.username, value: `Lv.${r.totalLevel.toFixed(1)}` }));
   }
   if (category === 'vsWinRate') {
-    const rows = await fetchTopByVsWinRate();
-    return rows.map((r: PlayerBoardEntry) => ({
+    const rows = await fetchTopByVsWinRate(weekKey(new Date()));
+    return rows.map((r: WeeklyBoardEntry) => ({
       username: r.username,
       value: `${Math.round((r.vsWins / r.vsAttempts) * 100)}% (${r.vsWins}/${r.vsAttempts})`,
     }));
@@ -89,7 +89,7 @@ export function RankingScreen({ onBack }: Props) {
       </View>
 
       {category === 'vsWinRate' && (
-        <Text style={styles.note}>※ {VS_WIN_RATE_MIN_ATTEMPTS}戦以上プレイした人のみ対象</Text>
+        <Text style={styles.note}>※ 今週(月曜リセット)に{VS_WIN_RATE_MIN_ATTEMPTS}戦以上した人のみ対象</Text>
       )}
       {category === 'weeklyPt' && <Text style={styles.note}>※ 今週(月曜リセット)の獲得ptだけを集計</Text>}
 

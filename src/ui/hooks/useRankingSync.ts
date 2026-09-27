@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { totalLevel } from '../../domain/stats';
 import { weekKey } from '../../domain/ranking';
 import { ensureSignedIn } from '../../firebase/auth';
-import { submitPlayerStats, submitWeeklyScore } from '../../firebase/ranking';
+import { submitPlayerStats, submitWeeklyStats } from '../../firebase/ranking';
 import { useGameStore } from '../../state/gameStore';
 
 const SYNC_INTERVAL_MS = 30_000;
@@ -25,25 +25,18 @@ export function useRankingSync(): void {
 
     const maxStage = Math.max(1, ...state.characters.map((c) => c.stage));
     const level = totalLevel(state.characters, state.activeCharacterId);
-    const vsWins = state.vsRaceWins ?? 0;
-    const vsAttempts = state.vsRaceAttempts ?? 0;
-    const weekly = state.weeklyProgress;
+    const weeklyProgress = state.weeklyProgress;
+    const weeklyVsRecord = state.weeklyVsRecord;
 
     void ensureSignedIn()
       .then((uid) => {
-        void submitPlayerStats(uid, {
+        void submitPlayerStats(uid, { username: state.username, stage: maxStage, totalLevel: level });
+        void submitWeeklyStats(uid, weekKey(new Date()), {
           username: state.username,
-          stage: maxStage,
-          totalLevel: level,
-          vsWins,
-          vsAttempts,
+          earnedPt: weeklyProgress?.earnedPt ?? 0,
+          vsWins: weeklyVsRecord?.wins ?? 0,
+          vsAttempts: weeklyVsRecord?.attempts ?? 0,
         });
-        if (weekly) {
-          void submitWeeklyScore(uid, weekKey(new Date()), {
-            username: state.username,
-            earnedPt: weekly.earnedPt,
-          });
-        }
       })
       .catch(() => {
         // オフライン・匿名認証未有効などで失敗しても、ゲーム進行には影響させない

@@ -158,14 +158,14 @@ describe('resolveVsRace', () => {
     expect(useGameStore.getState().state.vicMoney).toBe(50);
   });
 
-  it('勝敗によらず挑戦数が増え、勝った時だけ勝利数も増える(ランキングのVS勝率用)', () => {
+  it('勝敗によらず今週の挑戦数が増え、勝った時だけ勝利数も増える(ランキングのVS勝率用)', () => {
     useGameStore.getState().resolveVsRace(50, true);
-    expect(useGameStore.getState().state.vsRaceAttempts).toBe(1);
-    expect(useGameStore.getState().state.vsRaceWins).toBe(1);
+    expect(useGameStore.getState().state.weeklyVsRecord?.attempts).toBe(1);
+    expect(useGameStore.getState().state.weeklyVsRecord?.wins).toBe(1);
 
     useGameStore.getState().resolveVsRace(50, false);
-    expect(useGameStore.getState().state.vsRaceAttempts).toBe(2);
-    expect(useGameStore.getState().state.vsRaceWins).toBe(1);
+    expect(useGameStore.getState().state.weeklyVsRecord?.attempts).toBe(2);
+    expect(useGameStore.getState().state.weeklyVsRecord?.wins).toBe(1);
   });
 });
 

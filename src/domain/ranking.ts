@@ -11,7 +11,7 @@ export const RANKING_CATEGORIES: { key: RankingCategory; label: string; unit: st
   { key: 'stage', label: '到達ステージ', unit: '' },
   { key: 'totalLevel', label: '総合Lv.', unit: '' },
   { key: 'weeklyPt', label: '今週の獲得pt', unit: 'pt' },
-  { key: 'vsWinRate', label: 'VSレース勝率', unit: '%' },
+  { key: 'vsWinRate', label: '今週のVSレース勝率', unit: '%' },
 ];
 
 /** 明らかに不正な値を弾くための上限(不正対策ではなく異常値フィルタ)。 */
@@ -34,8 +34,15 @@ export function isPlausibleWeeklyPt(pt: number): boolean {
 /**
  * 「ただ長く遊んでいるだけ」で勝てないよう、VSレース勝率は最低戦績を満たすまで
  * ランキング対象にしない(1戦1勝=100%のような外れ値を防ぐ)。
+ *
+ * 通算の累積だと、試行回数が増えるほど1回の勝敗が比率に与える影響が小さくなり、
+ * 早くから始めて分母を稼いだ人の記録がほぼ動かなくなる(しかも1日5回上限なので
+ * 「試行回数が多い」こと自体が「長く続けている」ことの言い換えになってしまう)。
+ * これも「長く遊んでいるだけで勝てる」問題の一種のため、VS勝率も今週の獲得ptと同じく
+ * 週ごとにリセットする対象にした(WeeklyVsRecord)。週35回(5回×7日)が上限なので、
+ * 規定戦数は通算の20から週の枠に合わせて10に下げている。
  */
-export const VS_WIN_RATE_MIN_ATTEMPTS = 20;
+export const VS_WIN_RATE_MIN_ATTEMPTS = 10;
 
 /** nullは「まだ対象外(規定戦数未満)」。 */
 export function vsWinRate(wins: number, attempts: number): number | null {
@@ -72,4 +79,21 @@ export function resetWeeklyProgressIfNewWeek(progress: WeeklyProgress, now: Date
   const current = weekKey(now);
   if (progress.weekKey === current) return progress;
   return { weekKey: current, earnedPt: 0 };
+}
+
+export interface WeeklyVsRecord {
+  weekKey: string;
+  wins: number;
+  attempts: number;
+}
+
+export function initialWeeklyVsRecord(now: Date = new Date()): WeeklyVsRecord {
+  return { weekKey: weekKey(now), wins: 0, attempts: 0 };
+}
+
+/** 週が変わっていたら0-0にリセットする。 */
+export function resetWeeklyVsRecordIfNewWeek(record: WeeklyVsRecord, now: Date = new Date()): WeeklyVsRecord {
+  const current = weekKey(now);
+  if (record.weekKey === current) return record;
+  return { weekKey: current, wins: 0, attempts: 0 };
 }

@@ -13,7 +13,12 @@ import {
 } from '../domain/stage';
 import { baseStats, GameState, OwnedCharacter, StatKey, STAT_KEYS } from '../domain/types';
 import { resetVsRaceIfNewDay, VS_RACE_DAILY_LIMIT } from '../domain/vsRace';
-import { initialWeeklyProgress, resetWeeklyProgressIfNewWeek } from '../domain/ranking';
+import {
+  initialWeeklyProgress,
+  resetWeeklyProgressIfNewWeek,
+  initialWeeklyVsRecord,
+  resetWeeklyVsRecordIfNewWeek,
+} from '../domain/ranking';
 
 const STORAGE_KEY = 'mimi-advance/save';
 
@@ -263,13 +268,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     get().setState((state) => {
       const vsRace = resetVsRaceIfNewDay(state.vsRace);
       const remaining = Math.max(0, vsRace.remaining - 1);
+      // ランキング(今週のVSレース勝率)用。勝敗にかかわらず挑戦数としてカウントする。
+      const weeklyVsRecord = resetWeeklyVsRecordIfNewWeek(state.weeklyVsRecord ?? initialWeeklyVsRecord());
       return {
         ...state,
         vicMoney: won ? state.vicMoney + vicGained : state.vicMoney,
         vsRace: { ...vsRace, remaining },
-        // ランキング(VSレース勝率)用。勝敗にかかわらず挑戦数としてカウントする。
-        vsRaceAttempts: (state.vsRaceAttempts ?? 0) + 1,
-        vsRaceWins: (state.vsRaceWins ?? 0) + (won ? 1 : 0),
+        weeklyVsRecord: {
+          ...weeklyVsRecord,
+          attempts: weeklyVsRecord.attempts + 1,
+          wins: weeklyVsRecord.wins + (won ? 1 : 0),
+        },
       };
     });
   },
