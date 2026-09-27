@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CombatantProfile, staminaAtTime } from '../../domain/battle';
+import { CombatantProfile } from '../../domain/battle';
 import { BlackFade } from '../components/BlackFade';
 import { GaugeBar } from '../components/GaugeBar';
-import { opponentLeftPercentForRatios, TrackScene } from '../components/track/TrackScene';
+import { TrackScene } from '../components/track/TrackScene';
+import { jumpLayoutForTimeline } from '../components/track/trackLayout';
 import { TrackToastLayer } from '../components/track/TrackToastLayer';
 import { useBattlePlayback } from '../hooks/useBattlePlayback';
 import { useShake } from '../hooks/useShake';
@@ -67,16 +68,10 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
     []
   );
 
-  // 各障害物イベント時刻に、ボスが実際に居るはずの位置を事前計算する(仕様書5章、ボスは
-  // スタミナに応じて動くため)。TrackScene側の障害物出現タイミング・ジャンプ同期に使う。
-  const opponentLeftPercentAtJump = useMemo(
-    () =>
-      timeline.obstacleTimesMs.map((t) => {
-        const f = staminaAtTime(timeline, t);
-        const meR = f.meStamina / timeline.meMaxStamina;
-        const opponentR = f.opponentStamina / timeline.opponentMaxStamina;
-        return opponentLeftPercentForRatios(meR, opponentR);
-      }),
+  // 各障害物イベント時刻に、ボスと自キャラが実際に居るはずの位置を事前計算する(仕様書5章、
+  // 二人ともスタミナに応じて動くため)。TrackScene側の障害物出現タイミング・ジャンプ同期に使う。
+  const { opponentLeftPercentAtJump, runnerLeftPercentAtJump } = useMemo(
+    () => jumpLayoutForTimeline(timeline),
     [timeline]
   );
 
@@ -127,6 +122,7 @@ export function BattleScreen({ title, opponentName, me, opponent, onFinished }: 
           elapsedMs={elapsed}
           jumpTimesMs={timeline.obstacleTimesMs}
           opponentLeftPercentAtJump={opponentLeftPercentAtJump}
+          runnerLeftPercentAtJump={runnerLeftPercentAtJump}
           meRatio={frame.meStamina / timeline.meMaxStamina}
           opponentRatio={frame.opponentStamina / timeline.opponentMaxStamina}
         />

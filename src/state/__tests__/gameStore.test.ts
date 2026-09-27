@@ -196,6 +196,57 @@ describe('loadState', () => {
   });
 });
 
+describe('claimOfflineProgress', () => {
+  const MIN = 60 * 1000;
+
+  function setLastActiveAgo(ms: number) {
+    useGameStore.setState((s) => ({ state: { ...s.state, lastActiveAt: Date.now() - ms } }));
+  }
+
+  it('時刻の記録が無い古いセーブは報酬なしで、今を基準として記録するだけ', () => {
+    expect(useGameStore.getState().state.lastActiveAt).toBeUndefined();
+    expect(useGameStore.getState().claimOfflineProgress()).toBeNull();
+    expect(useGameStore.getState().state.lastActiveAt).toBeDefined();
+    expect(useGameStore.getState().state.runnerPt).toBe(0);
+  });
+
+  it('離れていた分のザコ追い抜きとptが反映され、ボス手前で止まる', () => {
+    setLastActiveAgo(3 * MIN); // ステージ1はザコ3体でボス出現(18体ぶん進めるがボス手前で頭打ち)
+    const before = Date.now();
+    const result = useGameStore.getState().claimOfflineProgress();
+
+    expect(result).not.toBeNull();
+    expect(result?.passes).toBe(3);
+    expect(result?.reachedBoss).toBe(true);
+    expect(getCharacter().zakoDefeated).toBe(3);
+    expect(getCharacter().totalZakoDefeated).toBe(3);
+    expect(useGameStore.getState().state.runnerPt).toBe(30);
+    expect(useGameStore.getState().state.lastActiveAt).toBeGreaterThanOrEqual(before);
+  });
+
+  it('1分未満の離席では何も変わらない', () => {
+    setLastActiveAgo(10 * 1000);
+    expect(useGameStore.getState().claimOfflineProgress()).toBeNull();
+    expect(getCharacter().zakoDefeated).toBe(0);
+    expect(useGameStore.getState().state.runnerPt).toBe(0);
+  });
+
+  it('続けて呼んでも二重には受け取れない', () => {
+    setLastActiveAgo(3 * MIN);
+    expect(useGameStore.getState().claimOfflineProgress()).not.toBeNull();
+    const ptAfterFirst = useGameStore.getState().state.runnerPt;
+    expect(useGameStore.getState().claimOfflineProgress()).toBeNull();
+    expect(useGameStore.getState().state.runnerPt).toBe(ptAfterFirst);
+  });
+
+  it('通常の操作(状態更新)で最終更新時刻が進む', () => {
+    setLastActiveAgo(5 * 60 * MIN);
+    const stale = useGameStore.getState().state.lastActiveAt as number;
+    useGameStore.getState().setUsername('あ');
+    expect(useGameStore.getState().state.lastActiveAt as number).toBeGreaterThan(stale);
+  });
+});
+
 describe('refreshVsRaceReset', () => {
   it('日付が変わっていれば残り回数をリセットする', () => {
     useGameStore.setState((s) => ({

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { selfCombatantProfile } from './src/domain/battle';
 import { highestLevelCharacter } from './src/domain/stats';
 import { VsOpponent, vsRaceVicReward } from './src/domain/vsRace';
 import { useGameStore } from './src/state/gameStore';
 import { useActiveCharacter } from './src/state/selectors';
+import { offlineReportMessage } from './src/ui/format';
 import { NotificationProvider, useNotifications } from './src/ui/Notifications';
 import { prefetchAllCharacterSprites } from './src/ui/spriteAssets';
 import { applyWebTouchFix } from './src/ui/webTouchFix';
@@ -36,12 +37,27 @@ function Root() {
   const characters = useGameStore((s) => s.state.characters);
   const character = useActiveCharacter();
   const [overlay, setOverlay] = useState<Overlay | null>(null);
-  const { showToast } = useNotifications();
+  const claimOfflineProgress = useGameStore((s) => s.claimOfflineProgress);
+  const { showToast, showPopup } = useNotifications();
 
   useEffect(() => {
     void hydrate();
     prefetchAllCharacterSprites();
   }, [hydrate]);
+
+  // 放置報酬: 起動直後と、離れていたタブ/アプリに戻ってきたときに、留守の間の分を受け取る。
+  useEffect(() => {
+    if (!hydrated) return;
+    const claim = () => {
+      const progress = claimOfflineProgress();
+      if (progress) showPopup('おかえりなさい！', offlineReportMessage(progress));
+    };
+    claim();
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') claim();
+    });
+    return () => subscription.remove();
+  }, [hydrated, claimOfflineProgress, showPopup]);
 
   // バトル用プロファイルは「その画面に入った瞬間」の値で固定する。overlay自体の参照は
   // 画面遷移のたびにしか変わらないため、これをキーにすることで、バトル中に他の理由で

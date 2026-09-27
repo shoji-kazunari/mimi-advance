@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { characterDefById, nextLockedCharacter, STARTER_CHARACTER } from '../domain/characters';
 import { canEvolve, evolve } from '../domain/evolution';
+import { calcOfflineProgress, OfflineProgress } from '../domain/offline';
 import { shoeCostFor, SHOE_UNLOCK_COST } from '../domain/shoes';
 import { statUpgradeCost, statLevelCap, isStatUnlocked } from '../domain/stats';
 import {
@@ -58,6 +59,11 @@ interface GameStore {
   resolveVsRace: (vicGained: number, won: boolean) => void;
   loadState: (state: GameState) => void;
   refreshVsRaceReset: () => void;
+  /**
+   * 閉じていた/離れていた間の放置報酬を受け取る(起動時とタブに戻ったときに呼ぶ)。
+   * 報酬がなければnull。受け取ったら最終更新時刻も今に進める。
+   */
+  claimOfflineProgress: (nowMs?: number) => OfflineProgress | null;
 
   /** デバッグ機能。操作中のキャラのステージを10進める(追い抜きカウントはリセット)。 */
   debugAdvanceStage: () => void;
@@ -126,7 +132,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   setState: (updater) => {
-    const next = updater(get().state);
+    // 更新のたびに最終更新時刻を刻む。放置報酬はここからの経過時間で計算する。
+    const next = { ...updater(get().state), lastActiveAt: Date.now() };
     set({ state: next });
     persist(next);
   },
@@ -289,6 +296,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const next = resetVsRaceIfNewDay(current);
     if (next === current) return; // 日付が変わっていなければ何もしない(無駄な保存を避ける)
     get().setState((state) => ({ ...state, vsRace: next }));
+  },
+
+  claimOfflineProgress: (nowMs = Date.now()) => {
+    const { lastActiveAt } = get().state;
+    if (lastActiveAt === undefined) {
+      // 古いセーブ(時刻の記録が無い)は、今回を基準にするだけで報酬は出さない
+      get().setState((state) => state);
+      return null;
+    }
+    const progress = calcOfflineProgress(activeCharacter(get().state), nowMs - lastActiveAt);
+    if (progress.passes === 0) return null;
+
+    get().setState((state) => {
+      const character = activeCharacter(state);
+      return updateCharacter(
+        { ...state, runnerPt: state.runnerPt + progress.runnerPt },
+        character.defId,
+        (c) => ({
+          ...c,
+          zakoDefeated: c.zakoDefeated + progress.passes,
+          totalZakoDefeated: c.totalZakoDefeated + progress.passes,
+        })
+      );
+    });
+    return progress;
   },
 
   debugAdvanceStage: () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 import { colors } from '../../theme';
+import { OBSTACLE_END_PERCENT, OBSTACLE_START_PERCENT, OBSTACLE_TRAVEL_MS } from './trackLayout';
 
 interface Props {
   /** 画面外まで抜けきって消えるタイミングで呼ばれる(呼び出し側でリストから外す)。 */
@@ -8,17 +9,8 @@ interface Props {
 }
 
 // ザコと同じく右から左へトラック全体を横切る。自キャラ・ボスはこの障害物が
-// それぞれの位置(TrackSceneのOPPONENT_LEFT_PERCENT→RUNNER_LEFT_PERCENT)を
-// 通過するタイミングに合わせてジャンプする(useObstacleJump側でスケジュールをずらして対応)。
-export const OBSTACLE_START_PERCENT = 100;
-export const OBSTACLE_END_PERCENT = -15;
-export const OBSTACLE_TRAVEL_MS = 1600;
-
-/** 障害物が画面右端(OBSTACLE_START_PERCENT)から指定の左位置(%)へ到達するまでの所要時間。 */
-export function obstacleTravelMsTo(leftPercent: number): number {
-  const span = OBSTACLE_START_PERCENT - OBSTACLE_END_PERCENT;
-  return ((OBSTACLE_START_PERCENT - leftPercent) / span) * OBSTACLE_TRAVEL_MS;
-}
+// それぞれの位置を通過するタイミングに合わせてジャンプする
+// (useObstacleJump側でスケジュールをずらして対応。位置の計算はtrackLayout.ts)。
 
 /** バトル中、ジャンプの理由になる障害物本体。右から出て左へ抜けていく。 */
 export function TrackObstacle({ onExit }: Props) {

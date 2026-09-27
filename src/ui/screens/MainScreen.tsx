@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { bossCombatantProfile, selfCombatantProfile, staminaAtTime } from '../../domain/battle';
+import { bossCombatantProfile, selfCombatantProfile } from '../../domain/battle';
 import { effectiveStatValue, isStatUnlocked, statLevelCap, statUpgradeCost, characterLevel, companionLevel } from '../../domain/stats';
 import { bossRunnerPtReward, bossVicMoneyReward, zakoPtGained, zakoRequiredCount, zakoSpawnIntervalMs } from '../../domain/stage';
 import { isVsRaceUnlocked, VS_RACE_UNLOCK_STAGE } from '../../domain/vsRace';
@@ -19,7 +19,8 @@ import { CenterBanner } from '../components/CenterBanner';
 import { FloatingPoint } from '../components/FloatingPoint';
 import { ShoeCard } from '../components/ShoeCard';
 import { StatCard } from '../components/StatCard';
-import { opponentLeftPercentForRatios, TrackScene } from '../components/track/TrackScene';
+import { TrackScene } from '../components/track/TrackScene';
+import { jumpLayoutForTimeline } from '../components/track/trackLayout';
 import { TrackToastLayer } from '../components/track/TrackToastLayer';
 import { SaveCodeModal } from './SaveCodeModal';
 import { BOSS_SPRITES, CHARACTER_SPRITES } from '../spriteAssets';
@@ -139,16 +140,10 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
     }
   );
 
-  // 各障害物イベント時刻に、ボスが実際に居るはずの位置を事前計算する(仕様書5章、ボスは
-  // スタミナに応じて動くため)。TrackScene側の障害物出現タイミング・ジャンプ同期に使う。
-  const opponentLeftPercentAtJump = useMemo(
-    () =>
-      battlePlayback.timeline.obstacleTimesMs.map((t) => {
-        const frame = staminaAtTime(battlePlayback.timeline, t);
-        const meR = frame.meStamina / battlePlayback.timeline.meMaxStamina;
-        const opponentR = frame.opponentStamina / battlePlayback.timeline.opponentMaxStamina;
-        return opponentLeftPercentForRatios(meR, opponentR);
-      }),
+  // 各障害物イベント時刻に、ボスと自キャラが実際に居るはずの位置を事前計算する(仕様書5章、
+  // 二人ともスタミナに応じて動くため)。TrackScene側の障害物出現タイミング・ジャンプ同期に使う。
+  const { opponentLeftPercentAtJump, runnerLeftPercentAtJump } = useMemo(
+    () => jumpLayoutForTimeline(battlePlayback.timeline),
     [battlePlayback.timeline]
   );
 
@@ -318,6 +313,7 @@ export function MainScreen({ onOpenCharacters, onOpenVsRace }: Props) {
               elapsedMs={battlePlayback.elapsed}
               jumpTimesMs={battlePlayback.timeline.obstacleTimesMs}
               opponentLeftPercentAtJump={opponentLeftPercentAtJump}
+              runnerLeftPercentAtJump={runnerLeftPercentAtJump}
               meRatio={battlePlayback.frame.meStamina / battlePlayback.timeline.meMaxStamina}
               opponentRatio={battlePlayback.frame.opponentStamina / battlePlayback.timeline.opponentMaxStamina}
               burstTrigger={burstTrigger}
